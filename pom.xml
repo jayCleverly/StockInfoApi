@@ -17,17 +17,39 @@
 	
 	<properties>
 		<java.version>21</java.version>
+
+		<!--CORE-->
+		<jackson.databind.version>2.19.2</jackson.databind.version>
+
+		<!--TEST-->
+		<junit.jupiter.api.version>5.13.4</junit.jupiter.api.version>
 	</properties>
 
 	<dependencies>
+		<!--SPRING-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+		<!--CORE-->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>${jackson.databind.version}</version>
+		</dependency>
+
+		<!--TEST-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-api</artifactId>
+			<version>${junit.jupiter.api.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
