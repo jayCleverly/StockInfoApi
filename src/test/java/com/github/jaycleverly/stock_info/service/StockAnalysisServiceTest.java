@@ -28,8 +28,7 @@ public class StockAnalysisServiceTest {
             mockRecords.add(new DailyStockRecord(startDate.plusDays(i), 0, 0, 0, 100 + i, 100 + i, 0L));
         }
 
-        // Reverse the records as they are reversed again when passed to the history constructor
-        mockStockHistory = new StockHistory("AAPL", mockRecords.reversed());
+        mockStockHistory = new StockHistory("AAPL", mockRecords);
     }
     
     @Test

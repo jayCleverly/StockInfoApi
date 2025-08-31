@@ -20,9 +20,11 @@
 
 		<!--CORE-->
 		<jackson.databind.version>2.19.2</jackson.databind.version>
+		<aws.sdk.dynamo.version>2.33.0</aws.sdk.dynamo.version>
 
 		<!--TEST-->
 		<junit.jupiter.api.version>5.13.4</junit.jupiter.api.version>
+		<mockito.core.version>5.19.0</mockito.core.version>
 	</properties>
 
 	<dependencies>
@@ -39,6 +41,12 @@
 			<version>${jackson.databind.version}</version>
 		</dependency>
 
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>dynamodb</artifactId>
+			<version>${aws.sdk.dynamo.version}</version>
+		</dependency>
+
 		<!--TEST-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -50,6 +58,13 @@
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-api</artifactId>
 			<version>${junit.jupiter.api.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-core</artifactId>
+			<version>${mockito.core.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

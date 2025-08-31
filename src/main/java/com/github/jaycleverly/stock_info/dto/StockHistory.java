@@ -8,7 +8,7 @@ public class StockHistory {
 
     public StockHistory(String symbol, List<DailyStockRecord> records) {
         this.symbol = symbol;
-        this.records = records.reversed(); // More recent the record, higher the index
+        this.records = records;
     }
 
     public String getSymbol() {

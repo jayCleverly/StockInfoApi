@@ -40,7 +40,8 @@ public class StockApiResponseParser {
             }
         });
 
-        return new StockHistory(symbol.toString(), records);
+        // More recent the record, higher the index
+        return new StockHistory(symbol.toString(), records.reversed());
     }
 
     private static DailyStockRecord toRecord(JsonNode stockInfo, LocalDate infoOriginDate) throws RuntimeException {
