@@ -61,7 +61,7 @@ public class FakeApiService {
             double lastClose = history.get(history.size() - 1).getClose();
             double newClose = generateNextPrice(lastClose);
 
-            history.add(generateDailyStockRecord(LocalDate.now().minusDays(1), newClose));
+            history.add(generateDailyStockRecord(symbol, LocalDate.now().minusDays(1), newClose));
         }
     }
 
@@ -72,7 +72,7 @@ public class FakeApiService {
         for (int i = days - 1; i >= 0; i--) {
             LocalDate date = LocalDate.now().minusDays(i + 1); // Stock info is generated at market close the day before
             price = generateNextPrice(price);
-            history.add(generateDailyStockRecord(date, price));
+            history.add(generateDailyStockRecord(symbol, date, price));
         }
         return history;
     }
@@ -82,14 +82,14 @@ public class FakeApiService {
         return previousClose * (1 + (RANDOM.nextDouble() - 0.5) * 0.04 + 0.001);
     }
 
-    private static DailyStockRecord generateDailyStockRecord(LocalDate date, double basePrice) {
+    private static DailyStockRecord generateDailyStockRecord(String symbol, LocalDate date, double basePrice) {
         double open = basePrice;
         double high = open * (1 + RANDOM.nextDouble() * 0.02);
         double low = open * (1 - RANDOM.nextDouble() * 0.02);
         double close = low + (high - low) * RANDOM.nextDouble();
         long volume = 1_000_000 + RANDOM.nextInt(5_000_000);
 
-        return new DailyStockRecord(date, open, high, low, close, close, volume);
+        return new DailyStockRecord(symbol, date, open, high, low, close, close, volume);
     }
     
     private static Map<String, String> buildMetadataHeader(String symbol, List<DailyStockRecord> history) {

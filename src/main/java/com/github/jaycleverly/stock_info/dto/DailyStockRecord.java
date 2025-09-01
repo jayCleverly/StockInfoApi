@@ -3,6 +3,7 @@ package com.github.jaycleverly.stock_info.dto;
 import java.time.LocalDate;
 
 public class DailyStockRecord {
+    private final String symbol;
     private final LocalDate date;
     private final double open;
     private final double high;
@@ -11,7 +12,15 @@ public class DailyStockRecord {
     private final double adjustedClose;
     private final long volume;
 
-    public DailyStockRecord(LocalDate date, double open, double high, double low, double close, double adjustedClose, long volume) {
+    public DailyStockRecord(String symbol, 
+                            LocalDate date, 
+                            double open, 
+                            double high, 
+                            double low, 
+                            double close, 
+                            double adjustedClose, 
+                            long volume) {
+        this.symbol = symbol;
         this.date = date;
         this.open = open;
         this.high = high;
@@ -19,6 +28,10 @@ public class DailyStockRecord {
         this.close = close;
         this.adjustedClose = adjustedClose;
         this.volume = volume;
+    }
+
+    public String getSymbol() {
+        return symbol;
     }
 
     public LocalDate getDate() {

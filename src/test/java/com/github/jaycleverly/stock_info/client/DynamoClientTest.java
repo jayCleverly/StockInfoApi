@@ -5,107 +5,111 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.github.jaycleverly.stock_info.dto.DailyStockMetrics;
 import com.github.jaycleverly.stock_info.exception.DynamoClientException;
 
-import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.PutItemResponse;
-import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
-import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.enhanced.dynamodb.Key;
+import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
+import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
+import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
 
 public class DynamoClientTest {
-    private final String mockTableName = "MockTable";
+    private final String MOCK_TABLE_NAME = "MockTable";
 
     private DynamoClient dynamoClient;
-    private DynamoDbClient mockClient;
+    private DynamoDbEnhancedClient mockClient;
+    private DynamoDbTable<DailyStockMetrics> mockTable;
 
     @BeforeEach
     void setUp() {
-        mockClient = mock(DynamoDbClient.class);
+        mockClient = mock(DynamoDbEnhancedClient.class);
+        mockTable = mock(DynamoDbTable.class);
         dynamoClient = new DynamoClient(mockClient);
+
+        when(mockClient.table(anyString(), any(TableSchema.class))).thenReturn(mockTable);
     }
     
     @Test
     void shouldSuccessfullyAddNewItem() {
-        Map<String, AttributeValue> mockItem = new HashMap<>();
-        mockItem.put("id", AttributeValue.builder().s("1").build());
-        when(mockClient.putItem(any(PutItemRequest.class))).thenReturn(PutItemResponse.builder().build());
+        DailyStockMetrics mockItem = new DailyStockMetrics("1", LocalDate.now(), 150.0, null, null, null, null);
 
-        assertDoesNotThrow(() -> dynamoClient.putItem(mockTableName, mockItem));
-        verify(mockClient).putItem(any(PutItemRequest.class));
+        assertDoesNotThrow(() -> dynamoClient.putItem(MOCK_TABLE_NAME, mockItem, DailyStockMetrics.class));
+        verify(mockTable).putItem(mockItem);
     }
 
     @Test
     void shouldThrowErrorOnPutFailure() {
-        Map<String, AttributeValue> mockItem = new HashMap<>();
-        mockItem.put("id", AttributeValue.builder().s("2").build());
-        when(mockClient.putItem(any(PutItemRequest.class))).thenThrow(RuntimeException.class);
+        DailyStockMetrics mockItem = new DailyStockMetrics("2", LocalDate.now(), 150.0, null, null, null, null);
+        doThrow(RuntimeException.class).when(mockTable).putItem(mockItem);
 
-        Exception exception = assertThrows(DynamoClientException.class, () -> dynamoClient.putItem(mockTableName, mockItem));
+        Exception exception = assertThrows(DynamoClientException.class, () -> dynamoClient.putItem(MOCK_TABLE_NAME, mockItem, DailyStockMetrics.class));
         assertTrue(exception.getMessage().equals("Exception when putting an item into table (MockTable)"));
-        verify(mockClient).putItem(any(PutItemRequest.class));
+        verify(mockTable).putItem(mockItem);
     }
 
     @Test
     void shouldSuccessfullyGetItem() {
-        Map<String, AttributeValue> mockKey = new HashMap<>();
-        mockKey.put("id", AttributeValue.builder().s("3").build());
+        Key mockKey = Key.builder().partitionValue("3").build();
+        DailyStockMetrics mockReturnedItem = new DailyStockMetrics("3", LocalDate.now(), 150.0, null, null, null, null);
+        when(mockTable.getItem(mockKey)).thenReturn(mockReturnedItem);
 
-        Map<String, AttributeValue> mockReturnedItem = new HashMap<>();
-        mockKey.put("data", AttributeValue.builder().s("3").build());
-        when(mockClient.getItem(any(GetItemRequest.class))).thenReturn(GetItemResponse.builder().item(mockReturnedItem).build());
-
-        Map<String, AttributeValue> result = dynamoClient.getItem(mockTableName, mockKey);
+        DailyStockMetrics result = dynamoClient.getItem(MOCK_TABLE_NAME, mockKey, DailyStockMetrics.class);
         assertEquals(mockReturnedItem, result);
-        verify(mockClient).getItem(any(GetItemRequest.class));
+        verify(mockTable).getItem(mockKey);
     }
 
     @Test
     void shouldThrowErrorOnGetFailure() {
-        Map<String, AttributeValue> mockKey = new HashMap<>();
-        mockKey.put("id", AttributeValue.builder().s("4").build());
-        when(mockClient.getItem(any(GetItemRequest.class))).thenThrow(RuntimeException.class);
+        Key mockKey = Key.builder().partitionValue("4").build();
+        doThrow(RuntimeException.class).when(mockTable).getItem(mockKey);
 
-        Exception exception = assertThrows(DynamoClientException.class, () -> dynamoClient.getItem(mockTableName, mockKey));
+        Exception exception = assertThrows(DynamoClientException.class, () -> dynamoClient.getItem(MOCK_TABLE_NAME, mockKey, DailyStockMetrics.class));
         assertTrue(exception.getMessage().equals("Exception when getting an item from table (MockTable)"));
-        verify(mockClient).getItem(any(GetItemRequest.class));
+        verify(mockTable).getItem(mockKey);
     }
 
     @Test
     void shouldSuccessfullyQueryTable() {
-        Map<String, AttributeValue> mockExpressionValues = new HashMap<>();
-        mockExpressionValues.put(":id", AttributeValue.builder().s("5").build());
+        QueryConditional mockCondition = QueryConditional.keyEqualTo(
+            Key.builder().partitionValue("1").build()
+        );
+        DailyStockMetrics mockMetrics = new DailyStockMetrics();
+        List<DailyStockMetrics> mockMetricList = List.of(mockMetrics);
 
-        QueryResponse response = QueryResponse.builder().build();
-        when(mockClient.query(any(QueryRequest.class))).thenReturn(response);
+        PageIterable<DailyStockMetrics> mockPageIterable = mock(PageIterable.class);
+        when(mockPageIterable.items()).thenReturn(() -> mockMetricList.iterator());
+        when(mockTable.query(any(QueryEnhancedRequest.class))).thenReturn(mockPageIterable);
 
-        QueryResponse result = dynamoClient.query(mockTableName, "id = :id", mockExpressionValues);
-        assertEquals(response, result);
-        verify(mockClient).query(any(QueryRequest.class));
+        List<DailyStockMetrics> result = dynamoClient.query(MOCK_TABLE_NAME, mockCondition, DailyStockMetrics.class);
+        assertEquals(mockMetricList, result);
+        verify(mockTable).query(any(QueryEnhancedRequest.class));
     }
 
     @Test
     void shouldThrowErrorOnQueryFailure() {
-        Map<String, AttributeValue> mockExpressionValues = new HashMap<>();
-        mockExpressionValues.put("id", AttributeValue.builder().s("6").build());
-        when(mockClient.query(any(QueryRequest.class))).thenThrow(RuntimeException.class);
+        QueryConditional mockCondition = QueryConditional.keyEqualTo(
+            Key.builder().partitionValue("1").build()
+        );
+        doThrow(RuntimeException.class).when(mockTable).query(any(QueryEnhancedRequest.class));
 
         Exception exception = assertThrows(DynamoClientException.class, () -> 
-            dynamoClient.query(mockTableName, "id = :id", mockExpressionValues));
+            dynamoClient.query(MOCK_TABLE_NAME, mockCondition, DailyStockMetrics.class));
         assertTrue(exception.getMessage().equals("Exception when querying table (MockTable)"));
-        verify(mockClient).query(any(QueryRequest.class));
+        verify(mockTable).query(any(QueryEnhancedRequest.class));
     }
 }

@@ -6,12 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.jaycleverly.stock_info.dto.DailyStockRecord;
-import com.github.jaycleverly.stock_info.dto.StockHistory;
 
 public class StockApiResponseParserTest {
     
@@ -37,10 +37,10 @@ public class StockApiResponseParserTest {
         }
         """;
 
-        StockHistory result = StockApiResponseParser.parse(mockApiResponseJson);
-        DailyStockRecord mockRecord = result.getRecords().get(0);
+        List<DailyStockRecord> result = StockApiResponseParser.parse(mockApiResponseJson);
+        DailyStockRecord mockRecord = result.get(0);
 
-        assertEquals(1, result.getRecords().size());
+        assertEquals(1, result.size());
         assertEquals(100.5, mockRecord.getOpen());
         assertEquals(105.0, mockRecord.getHigh());
         assertEquals(99.8, mockRecord.getLow());
@@ -79,12 +79,12 @@ public class StockApiResponseParserTest {
         }
         """;
 
-        StockHistory result = StockApiResponseParser.parse(mockApiResponseJson);
+        List<DailyStockRecord> result = StockApiResponseParser.parse(mockApiResponseJson);
 
-        assertEquals(2, result.getRecords().size());
-        assertTrue(result.getRecords().stream().anyMatch(record -> record.getDate().equals(LocalDate.of(2025, 8, 27))));
-        assertTrue(result.getRecords().stream().anyMatch(record -> record.getDate().equals(LocalDate.of(2025, 8, 26))));
-        assertTrue(result.getRecords().get(1).getDate().equals(LocalDate.of(2025, 8, 27)));
+        assertEquals(2, result.size());
+        assertTrue(result.stream().anyMatch(record -> record.getDate().equals(LocalDate.of(2025, 8, 27))));
+        assertTrue(result.stream().anyMatch(record -> record.getDate().equals(LocalDate.of(2025, 8, 26))));
+        assertTrue(result.get(1).getDate().equals(LocalDate.of(2025, 8, 27)));
     }
 
     @Test

@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jaycleverly.stock_info.dto.DailyStockRecord;
-import com.github.jaycleverly.stock_info.dto.StockHistory;
 
 /**
  * Parser to convert a json response from a stock API into a custom object. 
@@ -26,7 +25,7 @@ public class StockApiResponseParser {
      * @throws JsonProcessingException if the json cannot be parsed
      * @throws RuntimeException if a record cannot be formed from the json
      */
-    public static StockHistory parse(String stockHistoricalData) throws JsonMappingException, JsonProcessingException, RuntimeException {
+    public static List<DailyStockRecord> parse(String stockHistoricalData) throws JsonMappingException, JsonProcessingException, RuntimeException {
         JsonNode root = objectMapper.readTree(stockHistoricalData);
         JsonNode symbol = root.path("Meta Data").path("2. Symbol");
         JsonNode timeSeries = root.path("Time Series (Daily)");
@@ -34,18 +33,19 @@ public class StockApiResponseParser {
         List<DailyStockRecord> records = new ArrayList<>();
         timeSeries.fieldNames().forEachRemaining(dateStr -> {
             try {
-                records.add(toRecord(timeSeries.get(dateStr), LocalDate.parse(dateStr)));
+                records.add(toRecord(symbol.asText(), LocalDate.parse(dateStr), timeSeries.get(dateStr)));
             } catch (Exception e) {
                 throw new RuntimeException(String.format("Error when creating records: %s", e.getMessage()));
             }
         });
 
         // More recent the record, higher the index
-        return new StockHistory(symbol.toString(), records.reversed());
+        return records.reversed();
     }
 
-    private static DailyStockRecord toRecord(JsonNode stockInfo, LocalDate infoOriginDate) throws RuntimeException {
+    private static DailyStockRecord toRecord(String symbol, LocalDate infoOriginDate, JsonNode stockInfo) throws RuntimeException {
         return new DailyStockRecord(
+                symbol,
                 infoOriginDate,
                 stockInfo.get("1. open").asDouble(),
                 stockInfo.get("2. high").asDouble(),

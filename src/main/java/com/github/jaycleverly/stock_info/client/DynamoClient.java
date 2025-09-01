@@ -1,28 +1,28 @@
 package com.github.jaycleverly.stock_info.client;
 
-import java.util.Map;
+import java.util.List;
 
 import com.github.jaycleverly.stock_info.exception.DynamoClientException;
 
-import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
-import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.enhanced.dynamodb.Key;
+import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
+import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
 
 /*
  * Client for dynamo db operations
  */
 public class DynamoClient {
-    private final DynamoDbClient client;
+    private final DynamoDbEnhancedClient client;
 
     /**
      * Creates a new client for interacting with dynamo db
      * 
      * @param instance the aws sdk dynamo instance to use
      */
-    public DynamoClient(DynamoDbClient instance) {
+    public DynamoClient(DynamoDbEnhancedClient instance) {
         this.client = instance;
     }
 
@@ -31,14 +31,12 @@ public class DynamoClient {
      * 
      * @param tableName the name of the table to look in
      * @param item the item to put into the table
+     * @param type the type of item to put into the table
      */
-    public void putItem(String tableName, Map<String, AttributeValue> item) {
+    public <T> void putItem(String tableName, T item, Class<T> type) {
         try {
-            PutItemRequest request = PutItemRequest.builder()
-                .tableName(tableName)
-                .item(item)
-                .build();
-            client.putItem(request);
+            DynamoDbTable<T> table = client.table(tableName, TableSchema.fromBean(type));
+            table.putItem(item);
 
         } catch (Exception e) {
             throw new DynamoClientException(
@@ -51,15 +49,13 @@ public class DynamoClient {
      *
      * @param tableName the name of the table to look in
      * @param key the partition + sort key pairings to search with
+     * @param type the type of object getting from the table
      * @return the found item
      */
-    public Map<String, AttributeValue> getItem(String tableName, Map<String, AttributeValue> key) {
+    public <T> T getItem(String tableName, Key key, Class<T> type) {
         try {
-            GetItemRequest request = GetItemRequest.builder()
-                    .tableName(tableName)
-                    .key(key)
-                    .build();
-            return client.getItem(request).item();
+            DynamoDbTable<T> table = client.table(tableName, TableSchema.fromBean(type));
+            return table.getItem(key);
 
         } catch (Exception e) {
             throw new DynamoClientException(
@@ -71,18 +67,19 @@ public class DynamoClient {
      * Queries a table with a custom expression
      *
      * @param tableName the name of the table to look in
-     * @param keyConditionExpression the condition that determines items to be read
-     * @param expressionValues the values that are subsituted in the expression
+     * @param condition the condition that determines items to be read
+     * @param type the type of the values to be returned
      * @return the matching items the query has found
      */
-    public QueryResponse query(String tableName, String keyConditionExpression, Map<String, AttributeValue> expressionValues) {
+    public <T> List<T> query(String tableName, QueryConditional condition, Class<T> type) {
         try {
-            QueryRequest request = QueryRequest.builder()
-                    .tableName(tableName)
-                    .keyConditionExpression(keyConditionExpression)
-                    .expressionAttributeValues(expressionValues)
-                    .build();
-            return client.query(request);
+            DynamoDbTable<T> table = client.table(tableName, TableSchema.fromBean(type));
+            return table.query(QueryEnhancedRequest.builder()
+                    .queryConditional(condition)
+                    .build())
+                    .items()
+                    .stream()
+                    .toList();
 
         } catch (Exception e) {
             throw new DynamoClientException(
