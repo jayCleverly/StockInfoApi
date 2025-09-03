@@ -21,19 +21,19 @@ public class MetricBuilderServiceTest {
     static void setUp() {
         // Generate 50 days of mock data.
         LocalDate startDate = LocalDate.of(2025, 1, 1);
-        for (int i = 0; i < 49; i++) {
+        for (int i = 0; i < 50; i++) {
             mockStockHistory.add(new DailyStockRecord("TEST", startDate.plusDays(i), 0, 0, 0, 100 + i, 100 + i, 0L));
         }
     }
     
     @Test
     void shouldReturnCorrectMetrics() {
-        LocalDate dateToTest = LocalDate.of(2025, 2, 18);
+        LocalDate dateToTest = LocalDate.of(2025, 2, 19);
         DailyStockMetrics analysis = MetricBuilderService.caclculateMetrics(dateToTest, mockStockHistory);
 
-        assertEquals(148, analysis.getClose());
+        assertEquals(149, analysis.getClose());
         assertEquals(1.0, analysis.getPreviousCloseChange());
-        assertEquals(133.5, analysis.getMovingAverage());
+        assertEquals(134.5, analysis.getMovingAverage());
         assertEquals(0.0, analysis.getVolatility());
         assertEquals(0.10, analysis.getMomentum());
     }
@@ -52,9 +52,9 @@ public class MetricBuilderServiceTest {
 
     @Test
     void shouldThrowErrorForInvalidDate() {
-        LocalDate dateToTest = LocalDate.of(2025, 2, 19);
+        LocalDate dateToTest = LocalDate.of(2025, 2, 20);
 
         Exception exception = assertThrows(IllegalArgumentException.class, () -> MetricBuilderService.caclculateMetrics(dateToTest, mockStockHistory));
-        assertTrue(exception.getMessage().equals("Date (2025-02-19) not found in records"));
+        assertTrue(exception.getMessage().equals("Date (2025-02-20) not found in records"));
     }
 }

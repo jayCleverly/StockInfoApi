@@ -95,7 +95,7 @@ public class DynamoClientTest {
         when(mockPageIterable.items()).thenReturn(() -> mockMetricList.iterator());
         when(mockTable.query(any(QueryEnhancedRequest.class))).thenReturn(mockPageIterable);
 
-        List<DailyStockMetrics> result = dynamoClient.query(MOCK_TABLE_NAME, mockCondition, DailyStockMetrics.class);
+        List<DailyStockMetrics> result = dynamoClient.query(MOCK_TABLE_NAME, mockCondition, 10, DailyStockMetrics.class);
         assertEquals(mockMetricList, result);
         verify(mockTable).query(any(QueryEnhancedRequest.class));
     }
@@ -108,7 +108,7 @@ public class DynamoClientTest {
         doThrow(RuntimeException.class).when(mockTable).query(any(QueryEnhancedRequest.class));
 
         Exception exception = assertThrows(DynamoClientException.class, () -> 
-            dynamoClient.query(MOCK_TABLE_NAME, mockCondition, DailyStockMetrics.class));
+            dynamoClient.query(MOCK_TABLE_NAME, mockCondition, 10, DailyStockMetrics.class));
         assertTrue(exception.getMessage().equals("Exception when querying table (MockTable)"));
         verify(mockTable).query(any(QueryEnhancedRequest.class));
     }

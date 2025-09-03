@@ -28,11 +28,12 @@ public class FakeApiService {
      * Returns a historical record of stock data in a json format
      * 
      * @param symbol the stock symbol to get records for
+     * @param numRecords the number of records to recover (start with most recent, work backwards)
      * @return a json object containing metadata about the stock and historical records
      * @throws JsonProcessingException if the data cannot be parsed to json
      * @throws IllegalArgumentException if the symbol argument is invalid
      */
-    public static String getStockData(String symbol) throws JsonProcessingException, IllegalArgumentException {
+    public static String getStockData(String symbol, int numRecords) throws JsonProcessingException, IllegalArgumentException {
         if (symbol == null || symbol.isBlank()) {
             throw new IllegalArgumentException("Stock symbol must not be null or empty!");
         }
@@ -42,6 +43,11 @@ public class FakeApiService {
         if (history == null) {
             history = generateInitialHistory(symbol, DEFAULT_HISTORY_PERIOD);
             STOCK_DATA.put(symbol, history);
+        }
+
+        // Trim to last numRecords
+        if (numRecords > 0 && numRecords < history.size()) {
+            history = history.subList(history.size() - numRecords, history.size());
         }
 
         Map<String, Object> response = new LinkedHashMap<>();

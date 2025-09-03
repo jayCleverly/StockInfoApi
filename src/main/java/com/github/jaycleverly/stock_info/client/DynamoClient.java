@@ -68,14 +68,16 @@ public class DynamoClient {
      *
      * @param tableName the name of the table to look in
      * @param condition the condition that determines items to be read
+     * @param maxRecords the maximum number of records to return
      * @param type the type of the values to be returned
      * @return the matching items the query has found
      */
-    public <T> List<T> query(String tableName, QueryConditional condition, Class<T> type) {
+    public <T> List<T> query(String tableName, QueryConditional condition, int maxRecords, Class<T> type) {
         try {
             DynamoDbTable<T> table = client.table(tableName, TableSchema.fromBean(type));
             return table.query(QueryEnhancedRequest.builder()
                     .queryConditional(condition)
+                    .limit(maxRecords)
                     .build())
                     .items()
                     .stream()
