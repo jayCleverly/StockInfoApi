@@ -8,10 +8,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+@SpringBootTest
 public class FakeApiServiceTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final int NUM_RECORDS = 50;
@@ -19,7 +22,7 @@ public class FakeApiServiceTest {
     @Test
     void shouldReturnValidJsonObject() throws JsonProcessingException {
         String symbol = "AAPL";
-        String json = FakeApiService.getStockData(symbol,NUM_RECORDS);
+        String json = FakeApiService.getStockData(symbol, NUM_RECORDS);
         JsonNode root = objectMapper.readTree(json);
 
         assertNotNull(json);
@@ -54,7 +57,7 @@ public class FakeApiServiceTest {
         JsonNode root = objectMapper.readTree(json);
         JsonNode timeSeries = root.get("Time Series (Daily)");
 
-        assertEquals(50, timeSeries.size());
+        assertEquals(NUM_RECORDS, timeSeries.size());
     }
 
     @Test

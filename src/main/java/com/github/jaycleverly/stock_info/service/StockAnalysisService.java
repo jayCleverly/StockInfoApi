@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
@@ -26,12 +28,16 @@ import com.github.jaycleverly.stock_info.util.DateUtils;
 /**
  * Class to provide a response containing metrics about a stock
  */
+@Service
 public class StockAnalysisService {
     private static final Logger LOGGER = LoggerFactory.getLogger(StockAnalysisService.class);
     private static final String DYNAMO_TABLE_NAME = "StockMetrics";
-    private static final int NUM_DAYS_TO_ANALYSE = 50;
 
     private static DynamoClient dynamoClient = new DynamoClient(DynamoDbEnhancedClient.create());
+
+    private static int numDaysToAnalyse;
+    @Value("${max.records}")
+    public void setNumDaysToAnalyse(int numDaysToAnalyse) {StockAnalysisService.numDaysToAnalyse = numDaysToAnalyse;}
 
     /**
      * Produces a response containing metrics for a particular stock symbol
@@ -41,8 +47,8 @@ public class StockAnalysisService {
      * @throws StockAnalysisException if an error occurs while processing
      */
     public static List<DailyStockMetrics> produceAnalysis(String symbol) throws StockAnalysisException {
-        // Default is to keep data period within last 50 days
-        return produceAnalysis(symbol, LocalDate.now().minusDays(NUM_DAYS_TO_ANALYSE + 1), LocalDate.now().minusDays(1));
+        // Default is to keep data period within last n days
+        return produceAnalysis(symbol, LocalDate.now().minusDays(numDaysToAnalyse + 1), LocalDate.now().minusDays(1));
     }
 
     /**
@@ -57,7 +63,7 @@ public class StockAnalysisService {
     public static List<DailyStockMetrics> produceAnalysis(String symbol, 
                                                           LocalDate startDate, 
                                                           LocalDate endDate) throws StockAnalysisException {
-        DateRange analysisDateRange = DateUtils.verifyDateRange(startDate, endDate, DateUtils.getPastDate(NUM_DAYS_TO_ANALYSE + 1), DateUtils.getPastDate(1));
+        DateRange analysisDateRange = DateUtils.verifyDateRange(startDate, endDate, DateUtils.getPastDate(numDaysToAnalyse + 1), DateUtils.getPastDate(1));
         List<DailyStockMetrics> stockAnalysis = new ArrayList<>();
 
         try {
@@ -68,8 +74,8 @@ public class StockAnalysisService {
                 DailyStockMetrics.class);
                 
             if (dynamoResponse.isEmpty()) {
-                List<DailyStockRecord> stockRecords = fetchAndConvertStockRecords(symbol, NUM_DAYS_TO_ANALYSE);
-                List<DailyStockMetrics> stockMetrics = calculateAndUploadStockMetrics(stockRecords.getFirst().getDate(), NUM_DAYS_TO_ANALYSE, stockRecords);
+                List<DailyStockRecord> stockRecords = fetchAndConvertStockRecords(symbol, numDaysToAnalyse);
+                List<DailyStockMetrics> stockMetrics = calculateAndUploadStockMetrics(stockRecords.getFirst().getDate(), numDaysToAnalyse, stockRecords);
                 
                 stockAnalysis.addAll(stockMetrics);
             } else {
@@ -111,7 +117,7 @@ public class StockAnalysisService {
                     .sortBetween(
                         Key.builder().partitionValue(partitionKey).sortValue(sortKeyStart).build(), 
                         Key.builder().partitionValue(partitionKey).sortValue(sortKeyEnd).build()),
-                NUM_DAYS_TO_ANALYSE,
+                numDaysToAnalyse,
                 recordType);
         } catch (DynamoClientException exception) {
             LOGGER.error(String.format("Exception when finding dynamo records between (%s) - (%s)", sortKeyStart, sortKeyEnd));

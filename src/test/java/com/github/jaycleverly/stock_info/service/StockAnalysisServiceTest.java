@@ -24,6 +24,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import com.github.jaycleverly.stock_info.client.DynamoClient;
 import com.github.jaycleverly.stock_info.dto.DailyStockMetrics;
@@ -32,7 +33,7 @@ import com.github.jaycleverly.stock_info.exception.DynamoClientException;
 import com.github.jaycleverly.stock_info.exception.StockAnalysisException;
 import com.github.jaycleverly.stock_info.parser.StockApiResponseParser;
 
-
+@SpringBootTest
 public class StockAnalysisServiceTest {
     private static final String MOCK_SYMBOL = "MOCK";
     private static final int NUM_RECORDS = 50;
@@ -99,7 +100,7 @@ public class StockAnalysisServiceTest {
 
     @Test
     void shouldAddSomeNewRecordsInDynamo() throws Exception {
-        int recordsPresent = new Random().nextInt(50) + 1;
+        int recordsPresent = new Random().nextInt(NUM_RECORDS) + 1;
 
         when(dynamoClientMock.query(any(), any(), anyInt(), eq(DailyStockMetrics.class)))
             .thenAnswer(invocation -> new ArrayList<>(mockMetricHistory.subList(0, recordsPresent)));

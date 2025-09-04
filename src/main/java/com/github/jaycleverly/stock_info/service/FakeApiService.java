@@ -9,7 +9,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,11 +21,15 @@ import com.github.jaycleverly.stock_info.exception.ExternalApiProcessingExceptio
 /**
  * Fake API that is called in place of a traditional endpoint - no daily limits on calls. 
  */
+@Service
 public class FakeApiService {
     private static final Map<String, List<DailyStockRecord>> STOCK_DATA = new HashMap<>();
     private static final Random RANDOM = new Random();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final int DEFAULT_HISTORY_PERIOD = 50;
+
+    private static int defaultHistoryPeriod;
+    @Value("${max.records}")
+    public void setDefaultHistoryPeriod(int defaultHistoryPeriod) {FakeApiService.defaultHistoryPeriod = defaultHistoryPeriod;}
 
     /**
      * Returns a historical record of stock data in a json format
@@ -41,7 +47,7 @@ public class FakeApiService {
 
         List<DailyStockRecord> history = STOCK_DATA.get(symbol);
         if (history == null) {
-            history = generateInitialHistory(symbol, DEFAULT_HISTORY_PERIOD);
+            history = generateInitialHistory(symbol, defaultHistoryPeriod);
             STOCK_DATA.put(symbol, history);
         }
 
