@@ -29,6 +29,7 @@ import com.github.jaycleverly.stock_info.client.DynamoClient;
 import com.github.jaycleverly.stock_info.dto.DailyStockMetrics;
 import com.github.jaycleverly.stock_info.dto.DailyStockRecord;
 import com.github.jaycleverly.stock_info.exception.DynamoClientException;
+import com.github.jaycleverly.stock_info.exception.StockAnalysisException;
 import com.github.jaycleverly.stock_info.parser.StockApiResponseParser;
 
 
@@ -169,11 +170,12 @@ public class StockAnalysisServiceTest {
     void shouldFailToProduceAnalysis() throws Exception {
         when(dynamoClientMock.query(any(), any(), anyInt(), eq(DailyStockMetrics.class))).thenThrow(new DynamoClientException("Exception!", null));
 
-        Exception exception = assertThrows(RuntimeException.class, () -> StockAnalysisService.produceAnalysis(MOCK_SYMBOL));
+        StockAnalysisException exception = assertThrows(StockAnalysisException.class, () -> StockAnalysisService.produceAnalysis(MOCK_SYMBOL));
         assertTrue(exception.getMessage().equals(
             String.format("Exception when retrieving %s analysis over the period %s - %s!", 
                 MOCK_SYMBOL, 
                 LocalDate.now().minusDays(NUM_RECORDS + 1), 
                 LocalDate.now().minusDays(1))));
+        assertTrue(exception.getCause().getClass().getSimpleName().equals("DynamoClientException"));
     }
 }

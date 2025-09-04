@@ -10,8 +10,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.jaycleverly.stock_info.dto.DailyStockRecord;
+import com.github.jaycleverly.stock_info.exception.ExternalApiProcessingException;
 
 public class StockApiResponseParserTest {
     
@@ -111,8 +111,9 @@ public class StockApiResponseParserTest {
         }
         """;
 
-        JsonProcessingException exception = assertThrows(JsonProcessingException.class, () -> StockApiResponseParser.parse(mockApiResponseJson));
-        assertTrue(exception.getMessage().contains("Unexpected character"));
+        ExternalApiProcessingException exception = assertThrows(ExternalApiProcessingException.class, () -> StockApiResponseParser.parse(mockApiResponseJson));
+        assertTrue(exception.getMessage().equals("Exception when parsing api results!"));
+        assertTrue(exception.getCause().getClass().getSimpleName().equals("JsonParseException"));
     }
 
     @Test
@@ -135,7 +136,8 @@ public class StockApiResponseParserTest {
         }
         """;
 
-        Exception exception = assertThrows(Exception.class, () -> StockApiResponseParser.parse(mockApiResponseJson));
-        assertTrue(exception.getMessage().contains("Error when creating records:"));
+        ExternalApiProcessingException exception = assertThrows(ExternalApiProcessingException.class, () -> StockApiResponseParser.parse(mockApiResponseJson));
+        assertTrue(exception.getMessage().equals("Exception when parsing api results!"));
+        assertTrue(exception.getCause().getClass().getSimpleName().equals("NullPointerException"));
     }
 }

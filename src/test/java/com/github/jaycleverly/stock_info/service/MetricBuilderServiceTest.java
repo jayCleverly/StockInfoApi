@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import com.github.jaycleverly.stock_info.dto.DailyStockMetrics;
 import com.github.jaycleverly.stock_info.dto.DailyStockRecord;
+import com.github.jaycleverly.stock_info.exception.MetricBuilderException;
 
 public class MetricBuilderServiceTest {
     private static List<DailyStockRecord> mockStockHistory = new ArrayList<>();
@@ -54,7 +55,8 @@ public class MetricBuilderServiceTest {
     void shouldThrowErrorForInvalidDate() {
         LocalDate dateToTest = LocalDate.of(2025, 2, 20);
 
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> MetricBuilderService.caclculateMetrics(dateToTest, mockStockHistory));
-        assertTrue(exception.getMessage().equals("Date (2025-02-20) not found in records"));
+        MetricBuilderException exception = assertThrows(MetricBuilderException.class, () -> MetricBuilderService.caclculateMetrics(dateToTest, mockStockHistory));
+        assertTrue(exception.getMessage().equals("Exception when building metrics for stock!"));
+        assertTrue(exception.getCause().getClass().getSimpleName().equals("IllegalArgumentException"));
     }
 }

@@ -14,6 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jaycleverly.stock_info.dto.DailyStockRecord;
+import com.github.jaycleverly.stock_info.exception.ExternalApiProcessingException;
 
 /**
  * Fake API that is called in place of a traditional endpoint - no daily limits on calls. 
@@ -30,10 +31,9 @@ public class FakeApiService {
      * @param symbol the stock symbol to get records for
      * @param numRecords the number of records to recover (start with most recent, work backwards)
      * @return a json object containing metadata about the stock and historical records
-     * @throws JsonProcessingException if the data cannot be parsed to json
-     * @throws IllegalArgumentException if the symbol argument is invalid
+     * @throws ExternalApiProcessingException if the api cannot produce a valid response
      */
-    public static String getStockData(String symbol, int numRecords) throws JsonProcessingException, IllegalArgumentException {
+    public static String getStockData(String symbol, int numRecords) throws ExternalApiProcessingException {
         if (symbol == null || symbol.isBlank()) {
             throw new IllegalArgumentException("Stock symbol must not be null or empty!");
         }
@@ -50,11 +50,16 @@ public class FakeApiService {
             history = history.subList(history.size() - numRecords, history.size());
         }
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("Meta Data", buildMetadataHeader(symbol, history));
-        response.put("Time Series (Daily)", buildTimeSeries(history));
-    
-        return OBJECT_MAPPER.writeValueAsString(response);
+        try {
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("Meta Data", buildMetadataHeader(symbol, history));
+            response.put("Time Series (Daily)", buildTimeSeries(history));
+                
+            return OBJECT_MAPPER.writeValueAsString(response);
+
+        } catch (JsonProcessingException exception) {
+            throw new ExternalApiProcessingException("Exception when generating response!", exception);
+        }
     }
 
     /**

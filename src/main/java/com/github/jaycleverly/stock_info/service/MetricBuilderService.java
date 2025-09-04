@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.github.jaycleverly.stock_info.dto.DailyStockMetrics;
 import com.github.jaycleverly.stock_info.dto.DailyStockRecord;
+import com.github.jaycleverly.stock_info.exception.MetricBuilderException;
 
 /**
  * Class to calculate different metrics about a particular stock record
@@ -20,21 +21,27 @@ public class MetricBuilderService {
      * @param date the date of a record to calculate metrics for
      * @param history all the records associated with the stock 
      * @return an object containing all of the metrics
+     * @throws MetricBuilderException if an error occurs during the metric calculation process
      */
-    public static DailyStockMetrics caclculateMetrics(LocalDate date, List<DailyStockRecord> history) {
-        DailyStockRecord recordToAnalyse = history.stream()
-            .filter(r -> r.getDate().equals(date))
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException(String.format("Date (%s) not found in records", date.toString())));
+    public static DailyStockMetrics caclculateMetrics(LocalDate date, List<DailyStockRecord> history) throws MetricBuilderException {
+        try {
+            DailyStockRecord recordToAnalyse = history.stream()
+                .filter(r -> r.getDate().equals(date))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(String.format("Date (%s) not found in records", date.toString())));
         
-        String symbol = recordToAnalyse.getSymbol();
-        double close = round2dp(recordToAnalyse.getClose());
-        Double previousCloseChange = round2dp(calculateChangeFromPreviousClose(history, recordToAnalyse));
-        Double movingAverage = round2dp(calculateMovingAverage(history, recordToAnalyse));
-        Double volatility = round2dp(calculateVolatility(history, recordToAnalyse));
-        Double momentum = round2dp(calculateMomentum(history, recordToAnalyse));
+            String symbol = recordToAnalyse.getSymbol();
+            double close = round2dp(recordToAnalyse.getClose());
+            Double previousCloseChange = round2dp(calculateChangeFromPreviousClose(history, recordToAnalyse));
+            Double movingAverage = round2dp(calculateMovingAverage(history, recordToAnalyse));
+            Double volatility = round2dp(calculateVolatility(history, recordToAnalyse));
+            Double momentum = round2dp(calculateMomentum(history, recordToAnalyse));
 
-        return new DailyStockMetrics(symbol, date, close, previousCloseChange, movingAverage, volatility, momentum);
+            return new DailyStockMetrics(symbol, date, close, previousCloseChange, movingAverage, volatility, momentum);
+        
+        } catch (Exception exception) {
+            throw new MetricBuilderException("Exception when building metrics for stock!", exception);
+        }
     }
 
     private static Double calculateChangeFromPreviousClose(List<DailyStockRecord> records, DailyStockRecord recordToAnalyse) {
