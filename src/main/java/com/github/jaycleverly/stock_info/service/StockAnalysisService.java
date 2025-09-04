@@ -40,30 +40,22 @@ public class StockAnalysisService {
     public void setNumDaysToAnalyse(int numDaysToAnalyse) {StockAnalysisService.numDaysToAnalyse = numDaysToAnalyse;}
 
     /**
-     * Produces a response containing metrics for a particular stock symbol
-     * 
-     * @param symbol the symbol of the stock to provide analysis on
-     * @return a list of metrics
-     * @throws StockAnalysisException if an error occurs while processing
-     */
-    public static List<DailyStockMetrics> produceAnalysis(String symbol) throws StockAnalysisException {
-        // Default is to keep data period within last n days
-        return produceAnalysis(symbol, LocalDate.now().minusDays(numDaysToAnalyse + 1), LocalDate.now().minusDays(1));
-    }
-
-    /**
      * Produces a response containing metrics for a particular stock symbol and date range
      * 
      * @param symbol the symbol of the stock to provide analysis on
      * @param startDate the date to provide results from
      * @param endDate the date to provide results to
      * @return a list of metrics 
+     * @throws IllegalArgumentException if there is invalid input
      * @throws StockAnalysisException if an error occurs while processing
      */
     public static List<DailyStockMetrics> produceAnalysis(String symbol, 
-                                                          LocalDate startDate, 
-                                                          LocalDate endDate) throws StockAnalysisException {
-        DateRange analysisDateRange = DateUtils.verifyDateRange(startDate, endDate, DateUtils.getPastDate(numDaysToAnalyse + 1), DateUtils.getPastDate(1));
+                                                          String startDate, 
+                                                          String endDate) throws IllegalArgumentException, StockAnalysisException {
+        DateRange analysisDateRange = DateUtils.verifyDateRange(DateUtils.convertToDate(startDate), 
+                                                                DateUtils.convertToDate(endDate),
+                                                                DateUtils.getPastDate(numDaysToAnalyse + 1), 
+                                                                DateUtils.getPastDate(1));
         List<DailyStockMetrics> stockAnalysis = new ArrayList<>();
 
         try {
@@ -101,7 +93,8 @@ public class StockAnalysisService {
 
         } catch (DynamoClientException | ExternalApiProcessingException | MetricBuilderException exception) {
             throw new StockAnalysisException(
-                String.format("Exception when retrieving %s analysis over the period %s - %s!", symbol, startDate, endDate), 
+                String.format("Exception when retrieving %s analysis over the period %s - %s!", 
+                    symbol, analysisDateRange.getStartDate(), analysisDateRange.getEndDate()), 
                 exception);
         }
     }

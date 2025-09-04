@@ -1,6 +1,7 @@
 package com.github.jaycleverly.stock_info.util;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 
 import com.github.jaycleverly.stock_info.dto.DateRange;
@@ -17,8 +18,12 @@ public class DateUtils {
      * @param minStartDate the earliest a start date can be
      * @param maxEndDate the latest a start date can be
      * @return a DateRange object containing a valid start/end date
+     * @throws IllegalArgumentException if the entered dates do not meet certain criteria
      */
-    public static DateRange verifyDateRange(LocalDate startDate, LocalDate endDate, LocalDate minStartDate, LocalDate maxEndDate) {
+    public static DateRange verifyDateRange(LocalDate startDate, 
+                                            LocalDate endDate, 
+                                            LocalDate minStartDate, 
+                                            LocalDate maxEndDate) throws IllegalArgumentException {
         // Apply default values if no input
         startDate = (startDate != null) ? startDate : minStartDate;
         endDate = (endDate != null) ? endDate : maxEndDate;
@@ -59,5 +64,20 @@ public class DateUtils {
      */
     public static LocalDate getPastDate(int numDaysAgo) {
         return LocalDate.now().minusDays(numDaysAgo);
+    }
+
+    /**
+     * Converts a string to date object
+     * 
+     * @param date the string to convert
+     * @return a date object
+     * @throws IllegalArgumentException if the date cannot be parsed
+     */
+    public static LocalDate convertToDate(String date) throws IllegalArgumentException {
+        try {
+            return (date != null) ? LocalDate.parse(date) : null;
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException("Date must be in the format (YYYY-MM-DD)!");
+        }
     }
 }

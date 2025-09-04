@@ -69,4 +69,20 @@ public class DateUtilsTest {
     void shouldGetAPastDate() {
         assertEquals(DateUtils.getPastDate(5), LocalDate.now().minusDays(5));
     }
+
+    @Test
+    void shouldConvertStringToDate() {
+        assertEquals(LocalDate.of(2025, 8, 4), DateUtils.convertToDate("2025-08-04"));
+    }
+
+    @Test
+    void shouldConvertNullToNullDate() {
+        assertEquals(null, DateUtils.convertToDate(null));
+    }
+
+    @Test
+    void shouldFailToConvertStringToDate() {
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> DateUtils.convertToDate("2025-045-3"));
+        assertTrue(exception.getMessage().equals("Date must be in the format (YYYY-MM-DD)!"));
+    }
 }

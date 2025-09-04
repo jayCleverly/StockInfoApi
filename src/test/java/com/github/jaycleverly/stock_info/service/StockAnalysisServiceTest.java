@@ -91,7 +91,7 @@ public class StockAnalysisServiceTest {
                     .orElse(null);
         });
 
-        List<DailyStockMetrics> result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL);
+        List<DailyStockMetrics> result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
         assertEquals(mockMetricHistory, result);
 
         verify(dynamoClientMock, times(NUM_RECORDS))
@@ -116,7 +116,7 @@ public class StockAnalysisServiceTest {
                     .orElse(null);
         });
 
-        List<DailyStockMetrics> result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL);
+        List<DailyStockMetrics> result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
 
         assertEquals(mockMetricHistory, result);
         verify(dynamoClientMock, times(NUM_RECORDS - recordsPresent))
@@ -128,7 +128,7 @@ public class StockAnalysisServiceTest {
         when(dynamoClientMock.query(any(), any(), anyInt(), eq(DailyStockMetrics.class)))
             .thenAnswer(invocation -> new ArrayList<>(mockMetricHistory));
 
-        List<DailyStockMetrics> result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL);
+        List<DailyStockMetrics> result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
 
         assertEquals(mockMetricHistory, result);
         verify(dynamoClientMock, times(0))
@@ -157,7 +157,7 @@ public class StockAnalysisServiceTest {
         
         List<DailyStockMetrics> result = StockAnalysisService.produceAnalysis(
             MOCK_SYMBOL, 
-            mockMetricCustomRange.getFirst().getDate(),
+            mockMetricCustomRange.getFirst().getDate().toString(),
             null);
 
         assertEquals(mockMetricCustomRange.size() + 1, result.size());
@@ -171,7 +171,9 @@ public class StockAnalysisServiceTest {
     void shouldFailToProduceAnalysis() throws Exception {
         when(dynamoClientMock.query(any(), any(), anyInt(), eq(DailyStockMetrics.class))).thenThrow(new DynamoClientException("Exception!", null));
 
-        StockAnalysisException exception = assertThrows(StockAnalysisException.class, () -> StockAnalysisService.produceAnalysis(MOCK_SYMBOL));
+        StockAnalysisException exception = assertThrows(StockAnalysisException.class, () -> 
+            StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null));
+
         assertTrue(exception.getMessage().equals(
             String.format("Exception when retrieving %s analysis over the period %s - %s!", 
                 MOCK_SYMBOL, 
