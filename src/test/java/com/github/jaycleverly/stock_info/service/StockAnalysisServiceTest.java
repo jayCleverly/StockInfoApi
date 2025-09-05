@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -42,9 +43,11 @@ public class StockAnalysisServiceTest {
     private static MockedStatic<FakeApiService> fakeApiMock;
     private static MockedStatic<StockApiResponseParser> parserMock;
     private static MockedStatic<MetricBuilderService> metricBuilderMock;
+    private static MockedStatic<MetricFormatterService> metricFormatterMock;
 
     private List<DailyStockRecord> mockRecordHistory = new ArrayList<>();
     private List<DailyStockMetrics> mockMetricHistory = new ArrayList<>();
+    private String mockJsonAnalysis = "Mocked JSON response";
 
     @BeforeEach
     void setup() throws Exception {
@@ -57,6 +60,7 @@ public class StockAnalysisServiceTest {
         fakeApiMock = mockStatic(FakeApiService.class);
         parserMock = mockStatic(StockApiResponseParser.class);
         metricBuilderMock = mockStatic(MetricBuilderService.class);
+        metricFormatterMock = mockStatic(MetricFormatterService.class);
 
         // Generate data for stock history + metrics
         LocalDate startDate = LocalDate.now().minusDays(NUM_RECORDS);
@@ -73,6 +77,7 @@ public class StockAnalysisServiceTest {
         fakeApiMock.close();
         parserMock.close();
         metricBuilderMock.close();
+        metricFormatterMock.close();
     }
 
     @Test
@@ -90,9 +95,11 @@ public class StockAnalysisServiceTest {
                     .findFirst()
                     .orElse(null);
         });
+        metricFormatterMock.when(() -> MetricFormatterService.convertMetricsToJson(anyList()))
+            .thenReturn(mockJsonAnalysis);
 
-        List<DailyStockMetrics> result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
-        assertEquals(mockMetricHistory, result);
+        String result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
+        assertEquals(mockJsonAnalysis, result);
 
         verify(dynamoClientMock, times(NUM_RECORDS))
                 .putItem(anyString(), any(DailyStockMetrics.class), eq(DailyStockMetrics.class));
@@ -115,10 +122,12 @@ public class StockAnalysisServiceTest {
                     .findFirst()
                     .orElse(null);
         });
+        metricFormatterMock.when(() -> MetricFormatterService.convertMetricsToJson(anyList()))
+            .thenReturn(mockJsonAnalysis);
 
-        List<DailyStockMetrics> result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
+        String result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
+        assertEquals(mockJsonAnalysis, result);
 
-        assertEquals(mockMetricHistory, result);
         verify(dynamoClientMock, times(NUM_RECORDS - recordsPresent))
                 .putItem(anyString(), any(DailyStockMetrics.class), eq(DailyStockMetrics.class));
     }
@@ -127,10 +136,12 @@ public class StockAnalysisServiceTest {
     void shouldAddNoNewRecordsInDynamo() throws Exception {
         when(dynamoClientMock.query(any(), any(), anyInt(), eq(DailyStockMetrics.class)))
             .thenAnswer(invocation -> new ArrayList<>(mockMetricHistory));
+        metricFormatterMock.when(() -> MetricFormatterService.convertMetricsToJson(anyList()))
+            .thenReturn(mockJsonAnalysis);
 
-        List<DailyStockMetrics> result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
+        String result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
+        assertEquals(mockJsonAnalysis, result);
 
-        assertEquals(mockMetricHistory, result);
         verify(dynamoClientMock, times(0))
                 .putItem(anyString(), any(DailyStockMetrics.class), eq(DailyStockMetrics.class));
     }
@@ -154,15 +165,15 @@ public class StockAnalysisServiceTest {
                     .findFirst()
                     .orElse(null);
         });
+        metricFormatterMock.when(() -> MetricFormatterService.convertMetricsToJson(anyList()))
+            .thenReturn(mockJsonAnalysis);
         
-        List<DailyStockMetrics> result = StockAnalysisService.produceAnalysis(
+        String result = StockAnalysisService.produceAnalysis(
             MOCK_SYMBOL, 
             mockMetricCustomRange.getFirst().getDate().toString(),
             null);
+        assertEquals(mockJsonAnalysis, result);
 
-        assertEquals(mockMetricCustomRange.size() + 1, result.size());
-        assertEquals(mockMetricCustomRange.getFirst().getDate(), result.getFirst().getDate());
-        assertEquals(mockRecordCustomRange.getLast().getDate(), result.getLast().getDate());
         verify(dynamoClientMock, times(mockRecordCustomRange.size()))
                 .putItem(anyString(), any(DailyStockMetrics.class), eq(DailyStockMetrics.class));
     }
@@ -175,7 +186,7 @@ public class StockAnalysisServiceTest {
             StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null));
 
         assertTrue(exception.getMessage().equals(
-            String.format("Exception when retrieving %s analysis over the period %s - %s!", 
+            String.format("Exception when producing %s analysis over the period %s - %s!", 
                 MOCK_SYMBOL, 
                 LocalDate.now().minusDays(NUM_RECORDS + 1), 
                 LocalDate.now().minusDays(1))));

@@ -21,6 +21,7 @@ import com.github.jaycleverly.stock_info.dto.DateRange;
 import com.github.jaycleverly.stock_info.exception.DynamoClientException;
 import com.github.jaycleverly.stock_info.exception.ExternalApiProcessingException;
 import com.github.jaycleverly.stock_info.exception.MetricBuilderException;
+import com.github.jaycleverly.stock_info.exception.MetricFormatterException;
 import com.github.jaycleverly.stock_info.exception.StockAnalysisException;
 import com.github.jaycleverly.stock_info.parser.StockApiResponseParser;
 import com.github.jaycleverly.stock_info.util.DateUtils;
@@ -49,7 +50,7 @@ public class StockAnalysisService {
      * @throws IllegalArgumentException if there is invalid input
      * @throws StockAnalysisException if an error occurs while processing
      */
-    public static List<DailyStockMetrics> produceAnalysis(String symbol, 
+    public static String produceAnalysis(String symbol, 
                                                           String startDate, 
                                                           String endDate) throws IllegalArgumentException, StockAnalysisException {
         DateRange analysisDateRange = DateUtils.verifyDateRange(DateUtils.convertToDate(startDate), 
@@ -87,13 +88,11 @@ public class StockAnalysisService {
             }
     
             // Filter the returned list by the dates entered
-            return stockAnalysis.stream()
-                .filter(r -> !r.getDate().isBefore(analysisDateRange.getStartDate()) && !r.getDate().isAfter(analysisDateRange.getEndDate()))
-                .collect(Collectors.toList());
+            return filterAndFormatMetrics(stockAnalysis, analysisDateRange.getStartDate(), analysisDateRange.getEndDate());
 
-        } catch (DynamoClientException | ExternalApiProcessingException | MetricBuilderException exception) {
+        } catch (DynamoClientException | ExternalApiProcessingException | MetricBuilderException | MetricFormatterException exception) {
             throw new StockAnalysisException(
-                String.format("Exception when retrieving %s analysis over the period %s - %s!", 
+                String.format("Exception when producing %s analysis over the period %s - %s!", 
                     symbol, analysisDateRange.getStartDate(), analysisDateRange.getEndDate()), 
                 exception);
         }
@@ -146,5 +145,22 @@ public class StockAnalysisService {
             }
         }
         return metricsToUpload;
+    }
+
+    private static String filterAndFormatMetrics(List<DailyStockMetrics> metrics, 
+                                                 LocalDate metricStartDate, 
+                                                LocalDate metricEndDate) throws MetricFormatterException {
+        // More recent metrics at start of list
+        List<DailyStockMetrics> metricsToFormat = metrics.stream()
+            .filter(r -> !r.getDate().isBefore(metricStartDate) && !r.getDate().isAfter(metricEndDate))
+            .collect(Collectors.toList())
+            .reversed();
+
+        try {
+            return MetricFormatterService.convertMetricsToJson(metricsToFormat);
+        } catch (MetricFormatterException exception) {
+            LOGGER.error("Exception when converting metrics to JSON response", exception);
+            throw exception;
+        }
     }
 }
