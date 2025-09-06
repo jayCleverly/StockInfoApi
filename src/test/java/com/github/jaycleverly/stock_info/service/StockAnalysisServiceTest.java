@@ -8,13 +8,11 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,171 +22,161 @@ import java.util.Random;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.mockito.MockedStatic;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.mockito.MockitoAnnotations;
 
 import com.github.jaycleverly.stock_info.client.DynamoClient;
-import com.github.jaycleverly.stock_info.dto.DailyStockMetrics;
-import com.github.jaycleverly.stock_info.dto.DailyStockRecord;
+import com.github.jaycleverly.stock_info.config.properties.AppLimitsProperties;
 import com.github.jaycleverly.stock_info.exception.DynamoClientException;
 import com.github.jaycleverly.stock_info.exception.StockAnalysisException;
-import com.github.jaycleverly.stock_info.parser.StockApiResponseParser;
+import com.github.jaycleverly.stock_info.model.DailyStockMetrics;
+import com.github.jaycleverly.stock_info.model.DailyStockRecord;
+import com.github.jaycleverly.stock_info.parser.StockRecordsParser;
+import com.github.jaycleverly.stock_info.serializer.StockMetricsSerializer;
 
-@SpringBootTest
 public class StockAnalysisServiceTest {
     private static final String MOCK_SYMBOL = "MOCK";
-    private static final int NUM_RECORDS = 50;
+    private static final String MOCK_JSON_RECORDS = "Mocked JSON records";
+    private static final String MOCK_JSON_METRICS = "Mocked JSON metrics";
 
-    private static DynamoClient dynamoClientMock;
-    private static MockedStatic<FakeApiService> fakeApiMock;
-    private static MockedStatic<StockApiResponseParser> parserMock;
-    private static MockedStatic<MetricBuilderService> metricBuilderMock;
-    private static MockedStatic<MetricFormatterService> metricFormatterMock;
+    private static MockedStatic<StockRecordsParser> parserMock;
+    private static MockedStatic<StockMetricsSerializer> serializerMock;
 
-    private List<DailyStockRecord> mockRecordHistory = new ArrayList<>();
-    private List<DailyStockMetrics> mockMetricHistory = new ArrayList<>();
-    private String mockJsonAnalysis = "Mocked JSON response";
+    private final List<DailyStockRecord> mockRecordHistory = new ArrayList<>();
+    private final List<DailyStockMetrics> mockMetricHistory = new ArrayList<>();
+    private final AppLimitsProperties appLimitsProperties = new AppLimitsProperties(50, 100);
+    private final int numRecords = appLimitsProperties.metricRecords();
+
+    @Mock
+    private DynamoClient dynamoClientMock;
+    @Mock
+    private FakeApiService fakeApiServiceMock;
+    @Mock
+    private MetricBuilderService metricBuilderServiceMock;
+    private StockAnalysisService stockAnalysisService;
 
     @BeforeEach
-    void setup() throws Exception {
-        dynamoClientMock = mock(DynamoClient.class);
-        
-        Field clientField = StockAnalysisService.class.getDeclaredField("dynamoClient");
-        clientField.setAccessible(true);
-        clientField.set(null, dynamoClientMock);
+    void setup() {
+        parserMock = mockStatic(StockRecordsParser.class);
+        serializerMock = mockStatic(StockMetricsSerializer.class);
 
-        fakeApiMock = mockStatic(FakeApiService.class);
-        parserMock = mockStatic(StockApiResponseParser.class);
-        metricBuilderMock = mockStatic(MetricBuilderService.class);
-        metricFormatterMock = mockStatic(MetricFormatterService.class);
+        MockitoAnnotations.openMocks(this);
+        stockAnalysisService = new StockAnalysisService(appLimitsProperties, dynamoClientMock, fakeApiServiceMock, metricBuilderServiceMock);
 
         // Generate data for stock history + metrics
-        LocalDate startDate = LocalDate.now().minusDays(NUM_RECORDS);
-        for (int i = 0; i < NUM_RECORDS; i++) {
+        LocalDate startDate = LocalDate.now().minusDays(numRecords);
+        for (int i = 0; i < numRecords; i++) {
             mockRecordHistory.add(new DailyStockRecord(MOCK_SYMBOL, startDate.plusDays(i), 0, 0, 0, 100 + i, 100 + i, 0L));
         }
-        for (int i = 0; i < NUM_RECORDS; i++) {
+        for (int i = 0; i < numRecords; i++) {
             mockMetricHistory.add(new DailyStockMetrics(MOCK_SYMBOL, startDate.plusDays(i), 100.0, null, null, null, null));
         }
     }
 
     @AfterEach
     void cleanup() {
-        fakeApiMock.close();
         parserMock.close();
-        metricBuilderMock.close();
-        metricFormatterMock.close();
+        serializerMock.close();
     }
 
     @Test
-    void shouldAddAllNewRecordsInDynamo() throws Exception {
+    void shouldAddAllNewRecordsInDynamo() {
         when(dynamoClientMock.query(any(), any(), anyInt(), eq(DailyStockMetrics.class))).thenReturn(Collections.emptyList());
-
-        fakeApiMock.when(() -> FakeApiService.getStockData(eq(MOCK_SYMBOL), anyInt()))
-            .thenReturn("mock-json");
-        parserMock.when(() -> StockApiResponseParser.parse("mock-json"))
-            .thenReturn(mockRecordHistory);
-        metricBuilderMock.when(() -> MetricBuilderService.caclculateMetrics(any(LocalDate.class), eq(mockRecordHistory)))
+        when(fakeApiServiceMock.getStockData(eq(MOCK_SYMBOL), anyInt())).thenReturn(MOCK_JSON_RECORDS);
+        parserMock.when(() -> StockRecordsParser.parse(eq(MOCK_JSON_RECORDS))).thenReturn(mockRecordHistory);
+        when(metricBuilderServiceMock.caclculateMetrics(any(LocalDate.class), eq(mockRecordHistory)))
             .thenAnswer(invocation -> {
                 return mockMetricHistory.stream()
                     .filter(m -> m.getDate().equals(invocation.getArgument(0)))
                     .findFirst()
                     .orElse(null);
-        });
-        metricFormatterMock.when(() -> MetricFormatterService.convertMetricsToJson(anyList()))
-            .thenReturn(mockJsonAnalysis);
+            });
+        serializerMock.when(() -> StockMetricsSerializer.serialize(anyList())).thenReturn(MOCK_JSON_METRICS);
 
-        String result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
-        assertEquals(mockJsonAnalysis, result);
+        String result = stockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
+        assertEquals(MOCK_JSON_METRICS, result);
 
-        verify(dynamoClientMock, times(NUM_RECORDS))
+        verify(dynamoClientMock, times(numRecords))
                 .putItem(anyString(), any(DailyStockMetrics.class), eq(DailyStockMetrics.class));
     }
 
     @Test
-    void shouldAddSomeNewRecordsInDynamo() throws Exception {
-        int recordsPresent = new Random().nextInt(NUM_RECORDS) + 1;
+    void shouldAddSomeNewRecordsInDynamo() {
+        int recordsPresent = new Random().nextInt(numRecords) + 1;
 
         when(dynamoClientMock.query(any(), any(), anyInt(), eq(DailyStockMetrics.class)))
             .thenAnswer(invocation -> new ArrayList<>(mockMetricHistory.subList(0, recordsPresent)));
-        fakeApiMock.when(() -> FakeApiService.getStockData(eq(MOCK_SYMBOL), anyInt()))
-            .thenReturn("mock-json");
-        parserMock.when(() -> StockApiResponseParser.parse("mock-json"))
-            .thenReturn(mockRecordHistory);
-        metricBuilderMock.when(() -> MetricBuilderService.caclculateMetrics(any(LocalDate.class), eq(mockRecordHistory)))
+        when(fakeApiServiceMock.getStockData(eq(MOCK_SYMBOL), anyInt())).thenReturn(MOCK_JSON_RECORDS);
+        parserMock.when(() -> StockRecordsParser.parse(eq(MOCK_JSON_RECORDS))).thenReturn(mockRecordHistory);
+        when(metricBuilderServiceMock.caclculateMetrics(any(LocalDate.class), eq(mockRecordHistory)))
             .thenAnswer(invocation -> {
                 return mockMetricHistory.stream()
                     .filter(m -> m.getDate().equals(invocation.getArgument(0)))
                     .findFirst()
                     .orElse(null);
-        });
-        metricFormatterMock.when(() -> MetricFormatterService.convertMetricsToJson(anyList()))
-            .thenReturn(mockJsonAnalysis);
+            });
+        serializerMock.when(() -> StockMetricsSerializer.serialize(anyList())).thenReturn(MOCK_JSON_METRICS);
 
-        String result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
-        assertEquals(mockJsonAnalysis, result);
+        String result = stockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
+        assertEquals(MOCK_JSON_METRICS, result);
 
-        verify(dynamoClientMock, times(NUM_RECORDS - recordsPresent))
+        verify(dynamoClientMock, times(numRecords - recordsPresent))
                 .putItem(anyString(), any(DailyStockMetrics.class), eq(DailyStockMetrics.class));
     }
 
     @Test
-    void shouldAddNoNewRecordsInDynamo() throws Exception {
+    void shouldAddNoNewRecordsInDynamo() {
         when(dynamoClientMock.query(any(), any(), anyInt(), eq(DailyStockMetrics.class)))
             .thenAnswer(invocation -> new ArrayList<>(mockMetricHistory));
-        metricFormatterMock.when(() -> MetricFormatterService.convertMetricsToJson(anyList()))
-            .thenReturn(mockJsonAnalysis);
+        serializerMock.when(() -> StockMetricsSerializer.serialize(anyList())).thenReturn(MOCK_JSON_METRICS);
 
-        String result = StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
-        assertEquals(mockJsonAnalysis, result);
+        String result = stockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
+        assertEquals(MOCK_JSON_METRICS, result);
 
         verify(dynamoClientMock, times(0))
                 .putItem(anyString(), any(DailyStockMetrics.class), eq(DailyStockMetrics.class));
     }
 
     @Test
-    void shouldProduceAnalysisWithCustomDate() throws Exception {
-        ArrayList<DailyStockMetrics> mockMetricCustomRange = new ArrayList<>(mockMetricHistory.subList(NUM_RECORDS - 15, NUM_RECORDS - 1));
+    void shouldProduceAnalysisWithCustomDate() {
+        ArrayList<DailyStockMetrics> mockMetricCustomRange = new ArrayList<>(mockMetricHistory.subList(numRecords - 15, numRecords - 1));
         ArrayList<DailyStockRecord> mockRecordCustomRange = new ArrayList<>(mockRecordHistory.subList(mockRecordHistory.size() - 1, mockRecordHistory.size()));
 
         when(dynamoClientMock.query(any(), any(), anyInt(), eq(DailyStockMetrics.class)))
             .thenAnswer(invocation -> new ArrayList<>(mockMetricCustomRange));
-        
-        fakeApiMock.when(() -> FakeApiService.getStockData(eq(MOCK_SYMBOL), anyInt()))
-            .thenReturn("mock-json");
-        parserMock.when(() -> StockApiResponseParser.parse("mock-json"))
-            .thenReturn(mockRecordCustomRange);
-        metricBuilderMock.when(() -> MetricBuilderService.caclculateMetrics(any(LocalDate.class), eq(mockRecordCustomRange)))
+        when(fakeApiServiceMock.getStockData(eq(MOCK_SYMBOL), anyInt())).thenReturn(MOCK_JSON_RECORDS);
+        parserMock.when(() -> StockRecordsParser.parse(eq(MOCK_JSON_RECORDS))).thenReturn(mockRecordCustomRange);
+        when(metricBuilderServiceMock.caclculateMetrics(any(LocalDate.class), eq(mockRecordCustomRange)))
             .thenAnswer(invocation -> {
                 return mockMetricHistory.stream()
                     .filter(m -> m.getDate().equals(invocation.getArgument(0)))
                     .findFirst()
                     .orElse(null);
-        });
-        metricFormatterMock.when(() -> MetricFormatterService.convertMetricsToJson(anyList()))
-            .thenReturn(mockJsonAnalysis);
+            });
+        serializerMock.when(() -> StockMetricsSerializer.serialize(anyList())).thenReturn(MOCK_JSON_METRICS);
         
-        String result = StockAnalysisService.produceAnalysis(
+        String result = stockAnalysisService.produceAnalysis(
             MOCK_SYMBOL, 
             mockMetricCustomRange.getFirst().getDate().toString(),
             null);
-        assertEquals(mockJsonAnalysis, result);
+        assertEquals(MOCK_JSON_METRICS, result);
 
         verify(dynamoClientMock, times(mockRecordCustomRange.size()))
                 .putItem(anyString(), any(DailyStockMetrics.class), eq(DailyStockMetrics.class));
     }
 
     @Test
-    void shouldFailToProduceAnalysis() throws Exception {
+    void shouldFailToProduceAnalysis() {
         when(dynamoClientMock.query(any(), any(), anyInt(), eq(DailyStockMetrics.class))).thenThrow(new DynamoClientException("Exception!", null));
 
         StockAnalysisException exception = assertThrows(StockAnalysisException.class, () -> 
-            StockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null));
+            stockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null));
 
         assertTrue(exception.getMessage().equals(
             String.format("Exception when producing %s analysis over the period %s - %s!", 
                 MOCK_SYMBOL, 
-                LocalDate.now().minusDays(NUM_RECORDS + 1), 
+                LocalDate.now().minusDays(numRecords + 1), 
                 LocalDate.now().minusDays(1))));
         assertTrue(exception.getCause().getClass().getSimpleName().equals("DynamoClientException"));
     }

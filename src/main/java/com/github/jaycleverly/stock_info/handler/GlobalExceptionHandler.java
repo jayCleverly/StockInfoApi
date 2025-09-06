@@ -1,4 +1,4 @@
-package com.github.jaycleverly.stock_info.exception;
+package com.github.jaycleverly.stock_info.handler;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -9,12 +9,20 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import com.github.jaycleverly.stock_info.exception.StockAnalysisException;
+
 /**
  * Handles exceptions for spring controller
  */
 @ControllerAdvice
-public class SpringExceptionHandler {
+public class GlobalExceptionHandler {
 
+    /**
+     * Returns a 400 error with associated details
+     * 
+     * @param exception the exception type that triggers this handle
+     * @return a response containing the 400 error code and error details
+     */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleBadUserInput(IllegalArgumentException exception) {
         Map<String, Object> body = new HashMap<>();
@@ -26,6 +34,12 @@ public class SpringExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    /**
+     * Returns a 500 error with associated details
+     * 
+     * @param exception the exception type that triggers this handle
+     * @return a response containing the 500 error code and error details
+     */
     @ExceptionHandler(StockAnalysisException.class)
     public ResponseEntity<Map<String, Object>> handleInternalServerError(StockAnalysisException exception) {
         Map<String, Object> body = new HashMap<>();

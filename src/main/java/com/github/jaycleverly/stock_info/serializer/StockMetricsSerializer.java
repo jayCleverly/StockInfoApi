@@ -1,4 +1,4 @@
-package com.github.jaycleverly.stock_info.service;
+package com.github.jaycleverly.stock_info.serializer;
 
 import java.util.List;
 
@@ -6,29 +6,29 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.github.jaycleverly.stock_info.dto.DailyStockMetrics;
-import com.github.jaycleverly.stock_info.exception.MetricFormatterException;
+import com.github.jaycleverly.stock_info.exception.SerializerException;
+import com.github.jaycleverly.stock_info.model.DailyStockMetrics;
 
 /**
- * Class to produce JSON response for stock analysis service
+ * Class to provide methods to serialize metric records to a json response
  */
-public class MetricFormatterService {
-    private static ObjectMapper objectMapper = new ObjectMapper();
-    private static JsonNodeFactory factory = JsonNodeFactory.instance;
+public class StockMetricsSerializer {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final JsonNodeFactory FACTORY = JsonNodeFactory.instance;
     
     /**
-     * Formats a list of metrics to a JSON string
+     * Converts a list of metrics to a JSON response string
      * 
-     * @param metrics the metrics to format
+     * @param metrics the metrics to serialize
      * @return a JSON string
      * @throws MetricFormatterException if the metrics cannot be written as JSON
      */
-    public static String convertMetricsToJson(List<DailyStockMetrics> metrics) throws MetricFormatterException {
-        ObjectNode root = factory.objectNode();
+    public static String serialize(List<DailyStockMetrics> metrics) throws SerializerException {
+        ObjectNode root = FACTORY.objectNode();
 
         // Meta Data
         DailyStockMetrics latest = metrics.getFirst();
-        ObjectNode metaData = factory.objectNode();
+        ObjectNode metaData = FACTORY.objectNode();
         metaData.put("1. Information", "Daily Time Series with custom metrics");
         metaData.put("2. Symbol", latest.getSymbol());
         metaData.put("3. Last Refreshed", latest.getDate().toString());
@@ -36,9 +36,9 @@ public class MetricFormatterService {
         root.set("Meta Data", metaData);
 
         // Time Series (Daily)
-        ObjectNode timeSeries = factory.objectNode();
+        ObjectNode timeSeries = FACTORY.objectNode();
         for (DailyStockMetrics metric : metrics) {
-            ObjectNode daily = factory.objectNode();
+            ObjectNode daily = FACTORY.objectNode();
             daily.put("1. close", doubleToString(metric.getClose()));
             daily.put("2. previousCloseChange", doubleToString(metric.getPreviousCloseChange()));
             daily.put("3. movingAverage(30d)", doubleToString(metric.getMovingAverage()));
@@ -50,11 +50,10 @@ public class MetricFormatterService {
         root.set("Time Series (Daily)", timeSeries);
 
         try {
-            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+            return OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
         } catch(JsonProcessingException exception) {
-            throw new MetricFormatterException("Exception when converting metrics to JSON!", exception);
+            throw new SerializerException("Exception when converting metrics to JSON!", exception);
         }
-
     }
 
     private static String doubleToString(Double value) {

@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 
-import com.github.jaycleverly.stock_info.dto.DateRange;
+import com.github.jaycleverly.stock_info.model.DateRange;
 
 /**
  * Class to provide helper methods when processing dates

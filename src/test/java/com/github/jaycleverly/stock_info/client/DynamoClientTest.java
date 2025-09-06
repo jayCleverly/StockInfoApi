@@ -17,8 +17,8 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.github.jaycleverly.stock_info.dto.DailyStockMetrics;
 import com.github.jaycleverly.stock_info.exception.DynamoClientException;
+import com.github.jaycleverly.stock_info.model.DailyStockMetrics;
 
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;

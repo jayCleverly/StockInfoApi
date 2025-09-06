@@ -4,26 +4,42 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.github.jaycleverly.stock_info.dto.DailyStockMetrics;
-import com.github.jaycleverly.stock_info.dto.DailyStockRecord;
+import org.springframework.stereotype.Service;
+
+import com.github.jaycleverly.stock_info.config.properties.AppCalculationsProperties;
 import com.github.jaycleverly.stock_info.exception.MetricBuilderException;
+import com.github.jaycleverly.stock_info.model.DailyStockMetrics;
+import com.github.jaycleverly.stock_info.model.DailyStockRecord;
 
 /**
  * Class to calculate different metrics about a particular stock record
  */
+@Service
 public class MetricBuilderService {
-    private static final int MOVING_AVERAGE_PERIOD = 30;
-    private static final int VOLATILITY_PERIOD = 7;
-    private static final int MOMENTUM_PERIOD = 14;
+    private final int movingAveragePeriod;
+    private final int volatilityPeriod;
+    private final int momentumPeriod;
+
+    /**
+     * Creates a new service that can build metric objects from stock records
+     * 
+     * @param calculationsProperties the properties set for the application
+     */
+    public MetricBuilderService(AppCalculationsProperties calculationsProperties) {
+        this.movingAveragePeriod = calculationsProperties.movingAveragePeriod();
+        this.volatilityPeriod = calculationsProperties.volatilityPeriod();
+        this.momentumPeriod = calculationsProperties.momentumPeriod();
+    }   
     
     /**
      * Calculates metrics for a specific date in a stock's records
+     * 
      * @param date the date of a record to calculate metrics for
      * @param history all the records associated with the stock 
      * @return an object containing all of the metrics
      * @throws MetricBuilderException if an error occurs during the metric calculation process
      */
-    public static DailyStockMetrics caclculateMetrics(LocalDate date, List<DailyStockRecord> history) throws MetricBuilderException {
+    public DailyStockMetrics caclculateMetrics(LocalDate date, List<DailyStockRecord> history) throws MetricBuilderException {
         try {
             DailyStockRecord recordToAnalyse = history.stream()
                 .filter(r -> r.getDate().equals(date))
@@ -44,7 +60,7 @@ public class MetricBuilderService {
         }
     }
 
-    private static Double calculateChangeFromPreviousClose(List<DailyStockRecord> records, DailyStockRecord recordToAnalyse) {
+    private Double calculateChangeFromPreviousClose(List<DailyStockRecord> records, DailyStockRecord recordToAnalyse) {
         int index = records.indexOf(recordToAnalyse);
 
         if (index >= 1) {
@@ -53,25 +69,25 @@ public class MetricBuilderService {
         return null;
     }
 
-    private static Double calculateMovingAverage(List<DailyStockRecord> records, DailyStockRecord recordToAnalyse) {
+    private Double calculateMovingAverage(List<DailyStockRecord> records, DailyStockRecord recordToAnalyse) {
         int index = records.indexOf(recordToAnalyse);
 
-        if (index >= MOVING_AVERAGE_PERIOD - 1) {
+        if (index >= movingAveragePeriod - 1) {
             double sum = 0;
-            for (int j = (index - MOVING_AVERAGE_PERIOD) + 1; j <= index; j++) {
+            for (int j = (index - movingAveragePeriod) + 1; j <= index; j++) {
                 sum += records.get(j).getClose();
             }
-            return sum / MOVING_AVERAGE_PERIOD;
+            return sum / movingAveragePeriod;
         }
         return null;
     }
 
-    private static Double calculateVolatility(List<DailyStockRecord> records, DailyStockRecord recordToAnalyse) {
+    private Double calculateVolatility(List<DailyStockRecord> records, DailyStockRecord recordToAnalyse) {
         int index = records.indexOf(recordToAnalyse);
 
-        if (index >= VOLATILITY_PERIOD - 1) {
+        if (index >= volatilityPeriod - 1) {
             List<Double> returns = new ArrayList<>();
-            for (int j = (index - VOLATILITY_PERIOD) + 1; j <= index; j++) {
+            for (int j = (index - volatilityPeriod) + 1; j <= index; j++) {
                 double prevClose = records.get(j - 1).getClose();
                 returns.add((records.get(j).getClose() - prevClose) / prevClose);
             }
@@ -82,17 +98,17 @@ public class MetricBuilderService {
         return null;
     }
 
-    private static Double calculateMomentum(List<DailyStockRecord> records, DailyStockRecord recordToAnalyse) {
+    private Double calculateMomentum(List<DailyStockRecord> records, DailyStockRecord recordToAnalyse) {
         int index = records.indexOf(recordToAnalyse);
 
-        if (index >= MOMENTUM_PERIOD - 1) {
-            double historicalClose = records.get(index - MOMENTUM_PERIOD).getClose();
+        if (index >= momentumPeriod - 1) {
+            double historicalClose = records.get(index - momentumPeriod).getClose();
             return (recordToAnalyse.getClose() - historicalClose) / historicalClose;
         }
         return null;
     }
 
-    private static Double round2dp(Double value) {
+    private Double round2dp(Double value) {
         return value == null 
             ? null 
             : Math.round(value * 100.0) / 100.0;

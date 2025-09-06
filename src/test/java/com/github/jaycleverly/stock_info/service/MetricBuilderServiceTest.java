@@ -11,12 +11,15 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import com.github.jaycleverly.stock_info.dto.DailyStockMetrics;
-import com.github.jaycleverly.stock_info.dto.DailyStockRecord;
+import com.github.jaycleverly.stock_info.config.properties.AppCalculationsProperties;
 import com.github.jaycleverly.stock_info.exception.MetricBuilderException;
+import com.github.jaycleverly.stock_info.model.DailyStockMetrics;
+import com.github.jaycleverly.stock_info.model.DailyStockRecord;
 
 public class MetricBuilderServiceTest {
     private static List<DailyStockRecord> mockStockHistory = new ArrayList<>();
+
+    private final AppCalculationsProperties calculationsProperties = new AppCalculationsProperties(30, 7, 14);
 
     @BeforeAll
     static void setUp() {
@@ -30,7 +33,8 @@ public class MetricBuilderServiceTest {
     @Test
     void shouldReturnCorrectMetrics() {
         LocalDate dateToTest = LocalDate.of(2025, 2, 19);
-        DailyStockMetrics analysis = MetricBuilderService.caclculateMetrics(dateToTest, mockStockHistory);
+        MetricBuilderService metricBuilderService = new MetricBuilderService(calculationsProperties);
+        DailyStockMetrics analysis = metricBuilderService.caclculateMetrics(dateToTest, mockStockHistory);
 
         assertEquals(149, analysis.getClose());
         assertEquals(1.0, analysis.getPreviousCloseChange());
@@ -42,7 +46,8 @@ public class MetricBuilderServiceTest {
     @Test
     void shouldReturnNullsForUnsuitableRecords() {
         LocalDate dateToTest = LocalDate.of(2025, 1, 1);
-        DailyStockMetrics analysis = MetricBuilderService.caclculateMetrics(dateToTest, mockStockHistory);
+        MetricBuilderService metricBuilderService = new MetricBuilderService(calculationsProperties);
+        DailyStockMetrics analysis = metricBuilderService.caclculateMetrics(dateToTest, mockStockHistory);
 
         assertEquals(100, analysis.getClose());
         assertEquals(null, analysis.getPreviousCloseChange());
@@ -54,8 +59,9 @@ public class MetricBuilderServiceTest {
     @Test
     void shouldThrowErrorForInvalidDate() {
         LocalDate dateToTest = LocalDate.of(2025, 2, 20);
+        MetricBuilderService metricBuilderService = new MetricBuilderService(calculationsProperties);
 
-        MetricBuilderException exception = assertThrows(MetricBuilderException.class, () -> MetricBuilderService.caclculateMetrics(dateToTest, mockStockHistory));
+        MetricBuilderException exception = assertThrows(MetricBuilderException.class, () -> metricBuilderService.caclculateMetrics(dateToTest, mockStockHistory));
         assertTrue(exception.getMessage().equals("Exception when building metrics for stock!"));
         assertTrue(exception.getCause().getClass().getSimpleName().equals("IllegalArgumentException"));
     }

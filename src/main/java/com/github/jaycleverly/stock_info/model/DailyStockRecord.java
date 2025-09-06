@@ -1,4 +1,4 @@
-package com.github.jaycleverly.stock_info.dto;
+package com.github.jaycleverly.stock_info.model;
 
 import java.time.LocalDate;
 

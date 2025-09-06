@@ -2,6 +2,8 @@ package com.github.jaycleverly.stock_info.client;
 
 import java.util.List;
 
+import org.springframework.stereotype.Component;
+
 import com.github.jaycleverly.stock_info.exception.DynamoClientException;
 
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
@@ -14,6 +16,7 @@ import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
 /*
  * Client for dynamo db operations
  */
+@Component
 public class DynamoClient {
     private final DynamoDbEnhancedClient client;
 

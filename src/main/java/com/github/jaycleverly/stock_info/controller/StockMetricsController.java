@@ -13,6 +13,16 @@ import com.github.jaycleverly.stock_info.service.StockAnalysisService;
  */
 @RestController
 public class StockMetricsController {
+    private StockAnalysisService stockAnalysisService;
+
+    /**
+     * Creates a new rest controller for the application
+     * 
+     * @param stockAnalysisService the service to provide an analysis on an inputted stock
+     */
+    public StockMetricsController(StockAnalysisService stockAnalysisService) {
+        this.stockAnalysisService = stockAnalysisService;
+    }
 
     /**
      * Returns metrics for the supplied stock
@@ -24,9 +34,9 @@ public class StockMetricsController {
      */
     @GetMapping("stocks/{symbol}")
     public ResponseEntity<String> getStockMetrics(@PathVariable String symbol,
-                                                                   @RequestParam(required = false) String analysisStartDate,
-                                                                   @RequestParam(required = false) String analysisEndDate) {
+                                                  @RequestParam(required = false) String analysisStartDate,
+                                                  @RequestParam(required = false) String analysisEndDate) {
         return ResponseEntity.ok(
-            StockAnalysisService.produceAnalysis(symbol, analysisStartDate, analysisEndDate));
+            stockAnalysisService.produceAnalysis(symbol, analysisStartDate, analysisEndDate));
     }
 }

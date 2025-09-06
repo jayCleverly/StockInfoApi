@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: stock-info
+
+app:
+  limits:
+    metric-records: 50
+    api-records: 100
+  calculations:
+    moving-average-period: 30
+    volatility-period: 7
+    momentum-period: 14
+
+aws:
+  dynamodb:
+    region: ${AWS_REGION:eu-west-2}
+    endpoint: ${AWS_DYNAMODB_ENDPOINT:}

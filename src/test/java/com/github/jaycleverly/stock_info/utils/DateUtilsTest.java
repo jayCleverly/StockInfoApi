@@ -8,11 +8,10 @@ import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
 
-import com.github.jaycleverly.stock_info.dto.DateRange;
+import com.github.jaycleverly.stock_info.model.DateRange;
 import com.github.jaycleverly.stock_info.util.DateUtils;
 
 public class DateUtilsTest {
-    
     private static final LocalDate mockMinStart = LocalDate.of(2025, 8, 1);
     private static final LocalDate mockMaxStart = LocalDate.of(2025, 9, 1);
 

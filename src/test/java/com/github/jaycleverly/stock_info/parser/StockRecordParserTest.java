@@ -10,14 +10,13 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.github.jaycleverly.stock_info.dto.DailyStockRecord;
-import com.github.jaycleverly.stock_info.exception.ExternalApiProcessingException;
+import com.github.jaycleverly.stock_info.exception.ParserException;
+import com.github.jaycleverly.stock_info.model.DailyStockRecord;
 
-public class StockApiResponseParserTest {
-    
+public class StockRecordParserTest {
   @Test
     void shouldParseSingleRecord() throws IOException {
-        String mockApiResponseJson = """
+        String mockJsonData = """
         {
           "Meta Data": {
             "1. Information": "Daily Time Series with Splits and Dividend Events",
@@ -37,7 +36,7 @@ public class StockApiResponseParserTest {
         }
         """;
 
-        List<DailyStockRecord> result = StockApiResponseParser.parse(mockApiResponseJson);
+        List<DailyStockRecord> result = StockRecordsParser.parse(mockJsonData);
         DailyStockRecord mockRecord = result.get(0);
 
         assertEquals(1, result.size());
@@ -51,7 +50,7 @@ public class StockApiResponseParserTest {
 
     @Test
     void shouldParseMultipleRecords() throws IOException {
-        String mockApiResponseJson = """
+        String mockJsonData = """
         {
           "Meta Data": {
             "1. Information": "Daily Time Series with Splits and Dividend Events",
@@ -79,7 +78,7 @@ public class StockApiResponseParserTest {
         }
         """;
 
-        List<DailyStockRecord> result = StockApiResponseParser.parse(mockApiResponseJson);
+        List<DailyStockRecord> result = StockRecordsParser.parse(mockJsonData);
 
         assertEquals(2, result.size());
         assertTrue(result.stream().anyMatch(record -> record.getDate().equals(LocalDate.of(2025, 8, 27))));
@@ -89,7 +88,7 @@ public class StockApiResponseParserTest {
 
     @Test
     void shouldThrowExceptionOnInvalidJsonResponse() {
-      String mockApiResponseJson = """
+      String mockJsonData = """
         {
           "Meta Data": {
             "1. Information": "Daily Time Series with Splits and Dividend Events"
@@ -111,8 +110,8 @@ public class StockApiResponseParserTest {
         }
         """;
 
-        ExternalApiProcessingException exception = assertThrows(ExternalApiProcessingException.class, () -> StockApiResponseParser.parse(mockApiResponseJson));
-        assertTrue(exception.getMessage().equals("Exception when parsing api results!"));
+        ParserException exception = assertThrows(ParserException.class, () -> StockRecordsParser.parse(mockJsonData));
+        assertTrue(exception.getMessage().equals("Exception when parsing stock records!"));
         assertTrue(exception.getCause().getClass().getSimpleName().equals("JsonParseException"));
     }
 
@@ -136,8 +135,8 @@ public class StockApiResponseParserTest {
         }
         """;
 
-        ExternalApiProcessingException exception = assertThrows(ExternalApiProcessingException.class, () -> StockApiResponseParser.parse(mockApiResponseJson));
-        assertTrue(exception.getMessage().equals("Exception when parsing api results!"));
+        ParserException exception = assertThrows(ParserException.class, () -> StockRecordsParser.parse(mockApiResponseJson));
+        assertTrue(exception.getMessage().equals("Exception when parsing stock records!"));
         assertTrue(exception.getCause().getClass().getSimpleName().equals("NullPointerException"));
     }
 }

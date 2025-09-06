@@ -8,21 +8,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.jaycleverly.stock_info.config.properties.AppLimitsProperties;
 
-@SpringBootTest
 public class FakeApiServiceTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final int NUM_RECORDS = 50;
+    
+    private final AppLimitsProperties limitsProperties = new AppLimitsProperties(50, 100);
+    private final int numRecords = limitsProperties.metricRecords();
 
     @Test
     void shouldReturnValidJsonObject() throws JsonProcessingException {
         String symbol = "AAPL";
-        String json = FakeApiService.getStockData(symbol, NUM_RECORDS);
+        FakeApiService fakeApiService = new FakeApiService(limitsProperties);
+        String json = fakeApiService.getStockData(symbol, numRecords);
         JsonNode root = objectMapper.readTree(json);
 
         assertNotNull(json);
@@ -33,8 +35,9 @@ public class FakeApiServiceTest {
     @Test
     void shouldReturnConsistentData() throws JsonProcessingException {
         String symbol = "FB";
-        String firstCall = FakeApiService.getStockData(symbol, NUM_RECORDS);
-        String secondCall = FakeApiService.getStockData(symbol, NUM_RECORDS);
+        FakeApiService fakeApiService = new FakeApiService(limitsProperties);
+        String firstCall = fakeApiService.getStockData(symbol, numRecords);
+        String secondCall = fakeApiService.getStockData(symbol, numRecords);
 
         assertEquals(firstCall, secondCall);
     }
@@ -42,7 +45,8 @@ public class FakeApiServiceTest {
     @Test
     void shouldContainCorrectMetadataDate() throws JsonProcessingException {
         String symbol = "GOOG";
-        String json = FakeApiService.getStockData(symbol, NUM_RECORDS);
+        FakeApiService fakeApiService = new FakeApiService(limitsProperties);
+        String json = fakeApiService.getStockData(symbol, numRecords);
         JsonNode root = objectMapper.readTree(json);
 
         assertEquals(LocalDate.now().minusDays(1).toString(), 
@@ -52,19 +56,21 @@ public class FakeApiServiceTest {
     @Test
     void shouldContainDefaultHistoryLength() throws JsonProcessingException {
         String symbol = "MSFT";
-        String json = FakeApiService.getStockData(symbol, NUM_RECORDS);
+        FakeApiService fakeApiService = new FakeApiService(limitsProperties);
+        String json = fakeApiService.getStockData(symbol, numRecords);
 
         JsonNode root = objectMapper.readTree(json);
         JsonNode timeSeries = root.get("Time Series (Daily)");
 
-        assertEquals(NUM_RECORDS, timeSeries.size());
+        assertEquals(numRecords, timeSeries.size());
     }
 
     @Test
     void shouldThrowExceptionOnInvalidInput() {
         String symbol = "";
+        FakeApiService fakeApiService = new FakeApiService(limitsProperties);
 
-        Exception exception = assertThrows(Exception.class, () -> FakeApiService.getStockData(symbol, NUM_RECORDS));
+        Exception exception = assertThrows(Exception.class, () -> fakeApiService.getStockData(symbol, numRecords));
         assertTrue(exception.getMessage().contains("Stock symbol must not be null or empty!"));
     }
 }
