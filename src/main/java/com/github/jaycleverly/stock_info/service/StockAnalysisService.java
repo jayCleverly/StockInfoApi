@@ -35,7 +35,7 @@ public class StockAnalysisService {
     private static final Logger LOGGER = LoggerFactory.getLogger(StockAnalysisService.class);
     private static final String DYNAMO_TABLE_NAME = "StockMetrics";
 
-    private final int numDaysToAnalyse;
+    private final int maxDaysToAnalyse;
     private final DynamoClient dynamoClient;
     private final FakeApiService fakeApiService;
     private final MetricBuilderService metricBuilderService;
@@ -52,7 +52,7 @@ public class StockAnalysisService {
                                 DynamoClient dynamoClient, 
                                 FakeApiService fakeApiService, 
                                 MetricBuilderService metricBuilderService) {
-        this.numDaysToAnalyse = limitsProperties.metricRecords();
+        this.maxDaysToAnalyse = limitsProperties.metricRecords();
         this.dynamoClient = dynamoClient;
         this.fakeApiService = fakeApiService;
         this.metricBuilderService = metricBuilderService;
@@ -73,45 +73,41 @@ public class StockAnalysisService {
                                   String endDate) throws IllegalArgumentException, StockAnalysisException {
         DateRange analysisDateRange = DateUtils.verifyDateRange(DateUtils.convertToDate(startDate), 
                                                                 DateUtils.convertToDate(endDate),
-                                                                DateUtils.getPastDate(numDaysToAnalyse), 
+                                                                DateUtils.getPastDate(maxDaysToAnalyse), 
                                                                 DateUtils.getPastDate(1));
         List<DailyStockMetrics> stockAnalysis = new ArrayList<>();
 
         try {
             // Always try to get the maximum amount of records to analyse
             List<DailyStockMetrics> dynamoResponse = findDynamoRecordsBetween(
-                DateUtils.getPastDate(numDaysToAnalyse).toString(), 
+                DateUtils.getPastDate(maxDaysToAnalyse).toString(), 
                 DateUtils.getPastDate(1).toString(),
                 symbol,
+                maxDaysToAnalyse,
                 DailyStockMetrics.class);
-                
-            if (dynamoResponse.isEmpty()) {
-                LOGGER.info(String.format("No records in dynamo for stock %s, fetching new data...", symbol));
 
-                List<DailyStockRecord> stockRecords = fetchAndConvertStockRecords(symbol, numDaysToAnalyse);
-                List<DailyStockMetrics> stockMetrics = 
-                    calculateAndUploadStockMetrics(stockRecords.getFirst().getDate(), numDaysToAnalyse, stockRecords);
-                
+            LocalDate lastUpdateDate = dynamoResponse.isEmpty() 
+                ? null
+                : dynamoResponse.getLast().getDate();
+
+            if (lastUpdateDate == null || lastUpdateDate.isBefore(DateUtils.getPastDate(1))) {
+                LOGGER.info(String.format("Dynamo records incomplete for stock %s, updating...", symbol));
+
+                // Set last update to default value if doesn't exist
+                lastUpdateDate = lastUpdateDate == null 
+                    ? DateUtils.getPastDate(maxDaysToAnalyse)
+                    : lastUpdateDate;
+                int numRecordsToAdd = DateUtils.calculateNumDaysBetweenDates(lastUpdateDate, DateUtils.getPastDate(1)) + 1;
+
+                List<DailyStockRecord> stockRecords = fetchAndConvertStockRecords(symbol, numRecordsToAdd);
+                List<DailyStockMetrics> stockMetrics = calculateAndUploadStockMetrics(stockRecords);
+
                 stockAnalysis.addAll(stockMetrics);
-            } else {
-    
-                stockAnalysis = dynamoResponse;
-                LocalDate lastUpdate = dynamoResponse.getLast().getDate();
-    
-                if (!lastUpdate.equals(DateUtils.getPastDate(1))) {
-                    LOGGER.info(String.format("Dynamo records out of date for stock %s, updating...", symbol));
 
-                    int daysSinceUpdate = DateUtils.calculateNumDaysBetweenDates(lastUpdate, DateUtils.getPastDate(1));
-    
-                    List<DailyStockRecord> stockRecords = fetchAndConvertStockRecords(symbol, daysSinceUpdate);
-                    List<DailyStockMetrics> stockMetrics = 
-                        calculateAndUploadStockMetrics(lastUpdate.plusDays(1), daysSinceUpdate, stockRecords);
-    
-                    stockAnalysis.addAll(stockMetrics);
-                }
+            } else {
+                stockAnalysis = dynamoResponse;
             }
-    
-            // Filter the returned list by the dates entered
+
             return filterAndFormatMetrics(stockAnalysis, analysisDateRange.getStartDate(), analysisDateRange.getEndDate());
 
         } catch (DynamoClientException | FakeApiException | ParserException | MetricBuilderException | SerializerException exception) {
@@ -125,6 +121,7 @@ public class StockAnalysisService {
     private <T> List<T> findDynamoRecordsBetween(String sortKeyStart, 
                                                  String sortKeyEnd, 
                                                  String partitionKey, 
+                                                 int maxRecords,
                                                  Class<T> recordType) throws DynamoClientException {
         try {
             return dynamoClient.query(
@@ -132,8 +129,9 @@ public class StockAnalysisService {
                 QueryConditional
                     .sortBetween(
                         Key.builder().partitionValue(partitionKey).sortValue(sortKeyStart).build(), 
-                        Key.builder().partitionValue(partitionKey).sortValue(sortKeyEnd).build()),
-                numDaysToAnalyse,
+                        Key.builder().partitionValue(partitionKey).sortValue(sortKeyEnd).build()
+                    ),
+                maxRecords,
                 recordType);
         } catch (DynamoClientException exception) {
             LOGGER.error(String.format("Exception when finding dynamo records between (%s) - (%s)", sortKeyStart, sortKeyEnd));
@@ -151,20 +149,18 @@ public class StockAnalysisService {
         }
     }
 
-    private List<DailyStockMetrics> calculateAndUploadStockMetrics(LocalDate startDate, 
-                                                                   int daysToStore, 
-                                                                   List<DailyStockRecord> recordsToAnalyse) throws MetricBuilderException, DynamoClientException {
+    private List<DailyStockMetrics> calculateAndUploadStockMetrics(List<DailyStockRecord> recordsToAnalyse) throws MetricBuilderException, DynamoClientException {
         ArrayList<DailyStockMetrics> metricsToUpload = new ArrayList<>();
         
-        for (int i = 0; i < daysToStore; i++) {
+        for (DailyStockRecord record: recordsToAnalyse) {
             try {
-                metricsToUpload.add(metricBuilderService.caclculateMetrics(startDate.plusDays(i), recordsToAnalyse));
+                metricsToUpload.add(metricBuilderService.caclculateMetrics(record.getDate(), recordsToAnalyse));
                 dynamoClient.putItem(DYNAMO_TABLE_NAME, metricsToUpload.getLast(), DailyStockMetrics.class);
             } catch (MetricBuilderException exception) {
-                LOGGER.error(String.format("Exception when generating metric record for stock on date (%s)", startDate.plusDays(i)));
+                LOGGER.error(String.format("Exception when generating metric record for stock on date (%s)", record.getDate()));
                 throw exception;
             } catch (DynamoClientException exception) {
-                LOGGER.error(String.format("Exception when uplading metric record with date (%s) to dynamo", startDate.plusDays(i)));
+                LOGGER.error(String.format("Exception when uplading metric record with date (%s) to dynamo", record.getDate()));
                 throw exception;
             }
         }

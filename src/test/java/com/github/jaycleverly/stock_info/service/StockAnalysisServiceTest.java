@@ -104,12 +104,13 @@ public class StockAnalysisServiceTest {
     @Test
     void shouldAddSomeNewRecordsInDynamo() {
         int recordsPresent = new Random().nextInt(numRecords) + 1;
+        List<DailyStockRecord> mockApiRecords = mockRecordHistory.subList(recordsPresent, mockRecordHistory.size());
 
         when(dynamoClientMock.query(any(), any(), anyInt(), eq(DailyStockMetrics.class)))
             .thenAnswer(invocation -> new ArrayList<>(mockMetricHistory.subList(0, recordsPresent)));
         when(fakeApiServiceMock.getStockData(eq(MOCK_SYMBOL), anyInt())).thenReturn(MOCK_JSON_RECORDS);
-        parserMock.when(() -> StockRecordsParser.parse(eq(MOCK_JSON_RECORDS))).thenReturn(mockRecordHistory);
-        when(metricBuilderServiceMock.caclculateMetrics(any(LocalDate.class), eq(mockRecordHistory)))
+        parserMock.when(() -> StockRecordsParser.parse(eq(MOCK_JSON_RECORDS))).thenReturn(mockApiRecords);
+        when(metricBuilderServiceMock.caclculateMetrics(any(LocalDate.class), eq(mockApiRecords)))
             .thenAnswer(invocation -> {
                 return mockMetricHistory.stream()
                     .filter(m -> m.getDate().equals(invocation.getArgument(0)))

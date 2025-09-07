@@ -37,6 +37,6 @@ public class StockMetricsController {
                                                   @RequestParam(required = false) String analysisStartDate,
                                                   @RequestParam(required = false) String analysisEndDate) {
         return ResponseEntity.ok(
-            stockAnalysisService.produceAnalysis(symbol, analysisStartDate, analysisEndDate));
+            stockAnalysisService.produceAnalysis(symbol.toUpperCase(), analysisStartDate, analysisEndDate));
     }
 }
