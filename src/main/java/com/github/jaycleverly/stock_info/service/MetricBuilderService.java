@@ -85,7 +85,7 @@ public class MetricBuilderService {
     private Double calculateVolatility(List<DailyStockRecord> records, DailyStockRecord recordToAnalyse) {
         int index = records.indexOf(recordToAnalyse);
 
-        if (index >= volatilityPeriod - 1) {
+        if (index > volatilityPeriod - 1) {
             List<Double> returns = new ArrayList<>();
             for (int j = (index - volatilityPeriod) + 1; j <= index; j++) {
                 double prevClose = records.get(j - 1).getClose();
@@ -101,7 +101,7 @@ public class MetricBuilderService {
     private Double calculateMomentum(List<DailyStockRecord> records, DailyStockRecord recordToAnalyse) {
         int index = records.indexOf(recordToAnalyse);
 
-        if (index >= momentumPeriod - 1) {
+        if (index > momentumPeriod - 1) {
             double historicalClose = records.get(index - momentumPeriod).getClose();
             return (recordToAnalyse.getClose() - historicalClose) / historicalClose;
         }

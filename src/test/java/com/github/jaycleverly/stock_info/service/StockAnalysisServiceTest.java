@@ -176,7 +176,7 @@ public class StockAnalysisServiceTest {
         assertTrue(exception.getMessage().equals(
             String.format("Exception when producing %s analysis over the period %s - %s!", 
                 MOCK_SYMBOL, 
-                LocalDate.now().minusDays(numRecords + 1), 
+                LocalDate.now().minusDays(numRecords), 
                 LocalDate.now().minusDays(1))));
         assertTrue(exception.getCause().getClass().getSimpleName().equals("DynamoClientException"));
     }

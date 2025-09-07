@@ -35,15 +35,15 @@ public class StockMetricsSerializerTest {
               "1. close" : "100.00",
               "2. previousCloseChange" : "10.00",
               "3. movingAverage(30d)" : null,
-              "4. volatility(7d)" : null,
-              "5. momentum(14d)" : null
+              "4. volatility(7d%)" : null,
+              "5. momentum(14d%)" : null
             },
             "2025-09-05" : {
               "1. close" : "90.00",
               "2. previousCloseChange" : null,
               "3. movingAverage(30d)" : null,
-              "4. volatility(7d)" : null,
-              "5. momentum(14d)" : null
+              "4. volatility(7d%)" : null,
+              "5. momentum(14d%)" : null
             }
           }
         }""";

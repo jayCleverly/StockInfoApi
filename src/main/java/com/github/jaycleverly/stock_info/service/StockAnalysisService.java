@@ -73,18 +73,21 @@ public class StockAnalysisService {
                                   String endDate) throws IllegalArgumentException, StockAnalysisException {
         DateRange analysisDateRange = DateUtils.verifyDateRange(DateUtils.convertToDate(startDate), 
                                                                 DateUtils.convertToDate(endDate),
-                                                                DateUtils.getPastDate(numDaysToAnalyse + 1), 
+                                                                DateUtils.getPastDate(numDaysToAnalyse), 
                                                                 DateUtils.getPastDate(1));
         List<DailyStockMetrics> stockAnalysis = new ArrayList<>();
 
         try {
+            // Always try to get the maximum amount of records to analyse
             List<DailyStockMetrics> dynamoResponse = findDynamoRecordsBetween(
-                analysisDateRange.getStartDate().toString(), 
-                analysisDateRange.getEndDate().toString(),
+                DateUtils.getPastDate(numDaysToAnalyse).toString(), 
+                DateUtils.getPastDate(1).toString(),
                 symbol,
                 DailyStockMetrics.class);
                 
             if (dynamoResponse.isEmpty()) {
+                LOGGER.info(String.format("No records in dynamo for stock %s, fetching new data...", symbol));
+
                 List<DailyStockRecord> stockRecords = fetchAndConvertStockRecords(symbol, numDaysToAnalyse);
                 List<DailyStockMetrics> stockMetrics = 
                     calculateAndUploadStockMetrics(stockRecords.getFirst().getDate(), numDaysToAnalyse, stockRecords);
@@ -95,8 +98,9 @@ public class StockAnalysisService {
                 stockAnalysis = dynamoResponse;
                 LocalDate lastUpdate = dynamoResponse.getLast().getDate();
     
-                // Dynamo records are not up to date
                 if (!lastUpdate.equals(DateUtils.getPastDate(1))) {
+                    LOGGER.info(String.format("Dynamo records out of date for stock %s, updating...", symbol));
+
                     int daysSinceUpdate = DateUtils.calculateNumDaysBetweenDates(lastUpdate, DateUtils.getPastDate(1));
     
                     List<DailyStockRecord> stockRecords = fetchAndConvertStockRecords(symbol, daysSinceUpdate);

@@ -1,6 +1,6 @@
 spring:
   application:
-    name: stock-info
+    name: stock-info-api
 
 app:
   limits:

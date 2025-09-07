@@ -42,8 +42,8 @@ public class StockMetricsSerializer {
             daily.put("1. close", doubleToString(metric.getClose()));
             daily.put("2. previousCloseChange", doubleToString(metric.getPreviousCloseChange()));
             daily.put("3. movingAverage(30d)", doubleToString(metric.getMovingAverage()));
-            daily.put("4. volatility(7d)", doubleToString(metric.getVolatility()));
-            daily.put("5. momentum(14d)", doubleToString(metric.getMomentum()));
+            daily.put("4. volatility(7d%)", doubleToString(metric.getVolatility()));
+            daily.put("5. momentum(14d%)", doubleToString(metric.getMomentum()));
 
             timeSeries.set(metric.getDate().toString(), daily);
         }

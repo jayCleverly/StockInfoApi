@@ -1,18 +1,31 @@
 #!/bin/bash
 set -e
 
-# Config vars
-IMAGE_NAME="stockinfoapplocal"
+echo "Validating application tests..."
+mvn clean install
 
-# Build and run backend
-./cicd/build-backend.sh $IMAGE_NAME
+echo "Building docker containers..."
+docker compose pull
+docker compose -p stock-api up --force-recreate --build -d
+docker image prune -f
 
-echo "Starting backend service in docker: $IMAGE_NAME..."
-docker rm -f $IMAGE_NAME
-docker run -d --name $IMAGE_NAME -p 8080:8080 $IMAGE_NAME
+echo "Sleeping to allow time for container startup..."
+sleep 1
 
-# Build and run frontend
-./cicd/build-frontend.sh
+echo "Adding table to local docker instance..."
+AWS_ACCESS_KEY_ID=dummyId AWS_SECRET_ACCESS_KEY=dummySecret \
+aws dynamodb create-table \
+  --table-name StockMetrics \
+  --attribute-definitions \
+      AttributeName=symbol,AttributeType=S \
+      AttributeName=date,AttributeType=S \
+  --key-schema \
+      AttributeName=symbol,KeyType=HASH \
+      AttributeName=date,KeyType=RANGE \
+  --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 \
+  --endpoint-url http://localhost:8000 \
+  --region eu-west-2 \
+  --output text \
+  --no-cli-pager
 
-echo "Starting frontend service with hot reload"
-# todo: start frontend development server
+echo "Application running locally, ready for use!"
