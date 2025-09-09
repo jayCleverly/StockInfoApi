@@ -2,8 +2,8 @@ package com.github.jaycleverly.stock_info.service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +35,7 @@ public class StockAnalysisService {
     private static final Logger LOGGER = LoggerFactory.getLogger(StockAnalysisService.class);
     private static final String DYNAMO_TABLE_NAME = "StockMetrics";
 
+    private final int defaultDaysToAnalyse;
     private final int maxDaysToAnalyse;
     private final DynamoClient dynamoClient;
     private final FakeApiService fakeApiService;
@@ -52,7 +53,8 @@ public class StockAnalysisService {
                                 DynamoClient dynamoClient, 
                                 FakeApiService fakeApiService, 
                                 MetricBuilderService metricBuilderService) {
-        this.maxDaysToAnalyse = limitsProperties.metricRecords();
+        this.defaultDaysToAnalyse = limitsProperties.metricRecords();
+        this.maxDaysToAnalyse = limitsProperties.apiRecords();
         this.dynamoClient = dynamoClient;
         this.fakeApiService = fakeApiService;
         this.metricBuilderService = metricBuilderService;
@@ -70,20 +72,22 @@ public class StockAnalysisService {
      */
     public String produceAnalysis(String symbol, 
                                   String startDate, 
-                                  String endDate) throws IllegalArgumentException, StockAnalysisException {
-        DateRange analysisDateRange = DateUtils.verifyDateRange(DateUtils.convertToDate(startDate), 
-                                                                DateUtils.convertToDate(endDate),
-                                                                DateUtils.getPastDate(maxDaysToAnalyse), 
-                                                                DateUtils.getPastDate(1));
+                                  String endDate,
+                                  boolean fullOutputSize) throws IllegalArgumentException, StockAnalysisException {
+        final int numRecordsToReturn = fullOutputSize ? maxDaysToAnalyse : defaultDaysToAnalyse;
+        final DateRange analysisDateRange = DateUtils.verifyDateRange(DateUtils.convertToDate(startDate), 
+                                                                      DateUtils.convertToDate(endDate),
+                                                                      DateUtils.getPastDate(numRecordsToReturn), 
+                                                                      DateUtils.getPastDate(1));
+        
         List<DailyStockMetrics> stockAnalysis = new ArrayList<>();
-
         try {
-            // Always try to get the maximum amount of records to analyse
+            // Disregard analysis dates when retrieving dynamo records
             List<DailyStockMetrics> dynamoResponse = findDynamoRecordsBetween(
-                DateUtils.getPastDate(maxDaysToAnalyse).toString(), 
+                DateUtils.getPastDate(numRecordsToReturn).toString(), 
                 DateUtils.getPastDate(1).toString(),
                 symbol,
-                maxDaysToAnalyse,
+                numRecordsToReturn,
                 DailyStockMetrics.class);
 
             LocalDate lastUpdateDate = dynamoResponse.isEmpty() 
@@ -93,7 +97,7 @@ public class StockAnalysisService {
             if (lastUpdateDate == null || lastUpdateDate.isBefore(DateUtils.getPastDate(1))) {
                 LOGGER.info(String.format("Dynamo records incomplete for stock %s, updating...", symbol));
 
-                // Set last update to default value if doesn't exist
+                // Set last update to maximum records if none present in dynamo
                 lastUpdateDate = lastUpdateDate == null 
                     ? DateUtils.getPastDate(maxDaysToAnalyse)
                     : lastUpdateDate;
@@ -108,7 +112,7 @@ public class StockAnalysisService {
                 stockAnalysis = dynamoResponse;
             }
 
-            return filterAndFormatMetrics(stockAnalysis, analysisDateRange.getStartDate(), analysisDateRange.getEndDate());
+            return filterAndSerializeMetrics(stockAnalysis, analysisDateRange.getStartDate(), analysisDateRange.getEndDate(), numRecordsToReturn);
 
         } catch (DynamoClientException | FakeApiException | ParserException | MetricBuilderException | SerializerException exception) {
             throw new StockAnalysisException(
@@ -167,14 +171,16 @@ public class StockAnalysisService {
         return metricsToUpload;
     }
 
-    private String filterAndFormatMetrics(List<DailyStockMetrics> metrics, 
-                                                 LocalDate metricStartDate, 
-                                                LocalDate metricEndDate) throws SerializerException {
+    private String filterAndSerializeMetrics(List<DailyStockMetrics> metrics, 
+                                             LocalDate metricStartDate, 
+                                             LocalDate metricEndDate,
+                                             int numRecordsToReturn) throws SerializerException {
         // More recent metrics at start of list
         List<DailyStockMetrics> metricsToFormat = metrics.stream()
             .filter(r -> !r.getDate().isBefore(metricStartDate) && !r.getDate().isAfter(metricEndDate))
-            .collect(Collectors.toList())
-            .reversed();
+            .sorted(Comparator.comparing(DailyStockMetrics::getDate).reversed())
+            .limit(numRecordsToReturn)
+            .toList();
 
         try {
             return StockMetricsSerializer.serialize(metricsToFormat);

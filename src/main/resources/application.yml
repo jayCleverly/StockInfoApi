@@ -4,7 +4,7 @@ spring:
 
 app:
   limits:
-    metric-records: 50
+    metric-records: 25
     api-records: 100
   calculations:
     moving-average-period: 30

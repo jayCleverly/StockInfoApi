@@ -9,6 +9,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +27,7 @@ import com.github.jaycleverly.stock_info.model.DailyStockRecord;
 public class FakeApiService {
     private static final Random RANDOM = new Random();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Logger LOGGER = LoggerFactory.getLogger(FakeApiService.class);
 
     private final int defaultHistoryPeriod;
     private final Map<String, List<DailyStockRecord>> stockData;
@@ -77,15 +80,16 @@ public class FakeApiService {
     }
 
     /**
-     * Adds a new record to each stock at midnight every day
+     * Adds a new record to each stock at midnight every day UTC
      */
-    @Scheduled(cron = "0 0 0 * * ?")
+    @Scheduled(cron = "0 0 0 * * ?", zone = "UTC")
     private void addNewDailyRecord() {
         for (String symbol : stockData.keySet()) {
             List<DailyStockRecord> history = stockData.get(symbol);
             double lastClose = history.get(history.size() - 1).getClose();
             double newClose = generateNextPrice(lastClose);
 
+            LOGGER.info(String.format("Fake API adding new stock record for symbol %s...", symbol));
             history.add(generateDailyStockRecord(symbol, LocalDate.now().minusDays(1), newClose));
         }
     }

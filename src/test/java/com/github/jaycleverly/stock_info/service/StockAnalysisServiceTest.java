@@ -94,7 +94,7 @@ public class StockAnalysisServiceTest {
             });
         serializerMock.when(() -> StockMetricsSerializer.serialize(anyList())).thenReturn(MOCK_JSON_METRICS);
 
-        String result = stockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
+        String result = stockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null, false);
         assertEquals(MOCK_JSON_METRICS, result);
 
         verify(dynamoClientMock, times(numRecords))
@@ -119,7 +119,7 @@ public class StockAnalysisServiceTest {
             });
         serializerMock.when(() -> StockMetricsSerializer.serialize(anyList())).thenReturn(MOCK_JSON_METRICS);
 
-        String result = stockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
+        String result = stockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null, false);
         assertEquals(MOCK_JSON_METRICS, result);
 
         verify(dynamoClientMock, times(numRecords - recordsPresent))
@@ -132,7 +132,7 @@ public class StockAnalysisServiceTest {
             .thenAnswer(invocation -> new ArrayList<>(mockMetricHistory));
         serializerMock.when(() -> StockMetricsSerializer.serialize(anyList())).thenReturn(MOCK_JSON_METRICS);
 
-        String result = stockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null);
+        String result = stockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null, false);
         assertEquals(MOCK_JSON_METRICS, result);
 
         verify(dynamoClientMock, times(0))
@@ -160,7 +160,8 @@ public class StockAnalysisServiceTest {
         String result = stockAnalysisService.produceAnalysis(
             MOCK_SYMBOL, 
             mockMetricCustomRange.getFirst().getDate().toString(),
-            null);
+            null,
+            false);
         assertEquals(MOCK_JSON_METRICS, result);
 
         verify(dynamoClientMock, times(mockRecordCustomRange.size()))
@@ -172,7 +173,7 @@ public class StockAnalysisServiceTest {
         when(dynamoClientMock.query(any(), any(), anyInt(), eq(DailyStockMetrics.class))).thenThrow(new DynamoClientException("Exception!", null));
 
         StockAnalysisException exception = assertThrows(StockAnalysisException.class, () -> 
-            stockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null));
+            stockAnalysisService.produceAnalysis(MOCK_SYMBOL, null, null, false));
 
         assertTrue(exception.getMessage().equals(
             String.format("Exception when producing %s analysis over the period %s - %s!", 

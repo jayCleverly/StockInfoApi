@@ -35,8 +35,12 @@ public class StockMetricsController {
     @GetMapping("stocks/{symbol}")
     public ResponseEntity<String> getStockMetrics(@PathVariable String symbol,
                                                   @RequestParam(required = false) String analysisStartDate,
-                                                  @RequestParam(required = false) String analysisEndDate) {
+                                                  @RequestParam(required = false) String analysisEndDate,
+                                                  @RequestParam(required = false, defaultValue = "compact") String outputSize) {
         return ResponseEntity.ok(
-            stockAnalysisService.produceAnalysis(symbol.toUpperCase(), analysisStartDate, analysisEndDate));
+            stockAnalysisService.produceAnalysis(symbol.toUpperCase(), 
+                                                 analysisStartDate, 
+                                                 analysisEndDate, 
+                                                 outputSize.equalsIgnoreCase("full")));
     }
 }

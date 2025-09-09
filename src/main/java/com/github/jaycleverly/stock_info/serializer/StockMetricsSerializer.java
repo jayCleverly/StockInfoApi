@@ -32,7 +32,7 @@ public class StockMetricsSerializer {
         metaData.put("1. Information", "Daily Time Series (FAKE DATA) with custom metrics");
         metaData.put("2. Symbol", latest.getSymbol());
         metaData.put("3. Last Refreshed", latest.getDate().toString());
-        metaData.put("4. Time Zone", "Europe/London");
+        metaData.put("4. Time Zone", "UTC");
         root.set("Meta Data", metaData);
 
         // Time Series (Daily)

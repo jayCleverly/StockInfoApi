@@ -27,7 +27,7 @@ public class StockMetricsControllerTest {
 
     @Test
     void shouldReturn2xxStatusCode() throws Exception {
-        when(stockAnalysisMock.produceAnalysis(MOCK_INPUT_SYMBOL, null, null))
+        when(stockAnalysisMock.produceAnalysis(MOCK_INPUT_SYMBOL, null, null, false))
             .thenReturn(MOCK_JSON_RESPONSE);
 
         mockMvc.perform(get("/stocks/" + MOCK_INPUT_SYMBOL))
@@ -36,7 +36,7 @@ public class StockMetricsControllerTest {
 
     @Test
     void shouldReturn400StatusCode() throws Exception {
-        when(stockAnalysisMock.produceAnalysis(MOCK_INPUT_SYMBOL, "INVALID_DATE", null))
+        when(stockAnalysisMock.produceAnalysis(MOCK_INPUT_SYMBOL, "INVALID_DATE", null, false))
             .thenThrow(new IllegalArgumentException());
         
         mockMvc.perform(get("/stocks/" + MOCK_INPUT_SYMBOL)
@@ -46,7 +46,7 @@ public class StockMetricsControllerTest {
 
     @Test
     void shouldReturn500StatusCode() throws Exception {
-        when(stockAnalysisMock.produceAnalysis(MOCK_INPUT_SYMBOL, null, null))
+        when(stockAnalysisMock.produceAnalysis(MOCK_INPUT_SYMBOL, null, null, false))
             .thenThrow(new StockAnalysisException(null, null));
         
         mockMvc.perform(get("/stocks/" + MOCK_INPUT_SYMBOL))
