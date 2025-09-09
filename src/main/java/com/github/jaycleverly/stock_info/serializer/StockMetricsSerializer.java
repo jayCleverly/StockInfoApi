@@ -29,10 +29,11 @@ public class StockMetricsSerializer {
         // Meta Data
         DailyStockMetrics latest = metrics.getFirst();
         ObjectNode metaData = FACTORY.objectNode();
-        metaData.put("1. Information", "Daily Time Series (FAKE DATA) with custom metrics");
+        metaData.put("1. Information", "Daily Time Series with custom metrics");
         metaData.put("2. Symbol", latest.getSymbol());
         metaData.put("3. Last Refreshed", latest.getDate().toString());
-        metaData.put("4. Time Zone", "UTC");
+        metaData.put("4. Time Zone", "US/Eastern");
+        metaData.put("5. Record Count", metrics.size());
         root.set("Meta Data", metaData);
 
         // Time Series (Daily)

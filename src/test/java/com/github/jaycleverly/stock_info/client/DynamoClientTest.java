@@ -63,27 +63,6 @@ public class DynamoClientTest {
     }
 
     @Test
-    void shouldSuccessfullyGetItem() {
-        Key mockKey = Key.builder().partitionValue("3").build();
-        DailyStockMetrics mockReturnedItem = new DailyStockMetrics("3", LocalDate.now(), 150.0, null, null, null, null);
-        when(mockTable.getItem(mockKey)).thenReturn(mockReturnedItem);
-
-        DailyStockMetrics result = dynamoClient.getItem(MOCK_TABLE_NAME, mockKey, DailyStockMetrics.class);
-        assertEquals(mockReturnedItem, result);
-        verify(mockTable).getItem(mockKey);
-    }
-
-    @Test
-    void shouldThrowErrorOnGetFailure() {
-        Key mockKey = Key.builder().partitionValue("4").build();
-        doThrow(RuntimeException.class).when(mockTable).getItem(mockKey);
-
-        Exception exception = assertThrows(DynamoClientException.class, () -> dynamoClient.getItem(MOCK_TABLE_NAME, mockKey, DailyStockMetrics.class));
-        assertTrue(exception.getMessage().equals("Exception when getting an item from table (MockTable)"));
-        verify(mockTable).getItem(mockKey);
-    }
-
-    @Test
     void shouldSuccessfullyQueryTable() {
         QueryConditional mockCondition = QueryConditional.keyEqualTo(
             Key.builder().partitionValue("1").build()

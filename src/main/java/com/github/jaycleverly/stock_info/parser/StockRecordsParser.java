@@ -33,7 +33,7 @@ public class StockRecordsParser {
             timeSeries.fieldNames().forEachRemaining(dateStr -> {
                 records.add(toRecord(symbol.asText(), LocalDate.parse(dateStr), timeSeries.get(dateStr)));
             });
-    
+
             // More recent the record, higher the index
             return records.reversed();
 
@@ -42,16 +42,14 @@ public class StockRecordsParser {
         }
     }
 
-    private static DailyStockRecord toRecord(String symbol, LocalDate infoOriginDate, JsonNode stockInfo) throws RuntimeException {
+    private static DailyStockRecord toRecord(String symbol, LocalDate infoOriginDate, JsonNode stockInfo) {
         return new DailyStockRecord(
-                symbol,
-                infoOriginDate,
-                stockInfo.get("1. open").asDouble(),
-                stockInfo.get("2. high").asDouble(),
-                stockInfo.get("3. low").asDouble(),
-                stockInfo.get("4. close").asDouble(),
-                stockInfo.get("5. adjusted close").asDouble(),
-                stockInfo.get("6. volume").asLong()
-            );
+            symbol,
+            infoOriginDate,
+            stockInfo.get("1. open").asDouble(),
+            stockInfo.get("2. high").asDouble(),
+            stockInfo.get("3. low").asDouble(),
+            stockInfo.get("4. close").asDouble()
+        );
     }
 }

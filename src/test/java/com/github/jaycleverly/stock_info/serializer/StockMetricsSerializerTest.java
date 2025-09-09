@@ -25,10 +25,11 @@ public class StockMetricsSerializerTest {
         String expectedResult = """
         {
           "Meta Data" : {
-            "1. Information" : "Daily Time Series (FAKE DATA) with custom metrics",
+            "1. Information" : "Daily Time Series with custom metrics",
             "2. Symbol" : "symbol",
             "3. Last Refreshed" : "2025-09-06",
-            "4. Time Zone" : "UTC"
+            "4. Time Zone" : "US/Eastern",
+            "5. Record Count" : 2
           },
           "Time Series (Daily)" : {
             "2025-09-06" : {

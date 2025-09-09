@@ -2,30 +2,31 @@ package com.github.jaycleverly.stock_info.service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 
 import com.github.jaycleverly.stock_info.client.DynamoClient;
+import com.github.jaycleverly.stock_info.client.TimeSeriesApiClient;
 import com.github.jaycleverly.stock_info.config.properties.AppLimitsProperties;
+import com.github.jaycleverly.stock_info.config.properties.DynamoDbProperties;
+import com.github.jaycleverly.stock_info.exception.ClientErrorException;
 import com.github.jaycleverly.stock_info.exception.DynamoClientException;
-import com.github.jaycleverly.stock_info.exception.FakeApiException;
+import com.github.jaycleverly.stock_info.exception.InternalServerErrorException;
 import com.github.jaycleverly.stock_info.exception.ParserException;
 import com.github.jaycleverly.stock_info.exception.MetricBuilderException;
 import com.github.jaycleverly.stock_info.exception.SerializerException;
-import com.github.jaycleverly.stock_info.exception.StockAnalysisException;
+import com.github.jaycleverly.stock_info.exception.TimeSeriesApiException;
 import com.github.jaycleverly.stock_info.model.DailyStockMetrics;
 import com.github.jaycleverly.stock_info.model.DailyStockRecord;
-import com.github.jaycleverly.stock_info.model.DateRange;
 import com.github.jaycleverly.stock_info.parser.StockRecordsParser;
 import com.github.jaycleverly.stock_info.serializer.StockMetricsSerializer;
-import com.github.jaycleverly.stock_info.util.DateUtils;
 
 /**
  * Class to provide a response containing metrics about a stock
@@ -33,12 +34,12 @@ import com.github.jaycleverly.stock_info.util.DateUtils;
 @Service
 public class StockAnalysisService {
     private static final Logger LOGGER = LoggerFactory.getLogger(StockAnalysisService.class);
-    private static final String DYNAMO_TABLE_NAME = "StockMetrics";
-
+    
     private final int defaultDaysToAnalyse;
     private final int maxDaysToAnalyse;
+    private final String dynamoTableName;
     private final DynamoClient dynamoClient;
-    private final FakeApiService fakeApiService;
+    private final TimeSeriesApiClient timeSeriesApiClient;
     private final MetricBuilderService metricBuilderService;
 
     /**
@@ -50,103 +51,90 @@ public class StockAnalysisService {
      * @param metricBuilderService the service to create metrics from stock records
      */
     public StockAnalysisService(AppLimitsProperties limitsProperties,
+                                DynamoDbProperties dynamoDbProperties,
                                 DynamoClient dynamoClient, 
-                                FakeApiService fakeApiService, 
+                                TimeSeriesApiClient timeSeriesApiClient, 
                                 MetricBuilderService metricBuilderService) {
-        this.defaultDaysToAnalyse = limitsProperties.metricRecords();
-        this.maxDaysToAnalyse = limitsProperties.apiRecords();
+        this.defaultDaysToAnalyse = limitsProperties.compactRecords();
+        this.maxDaysToAnalyse = limitsProperties.fullRecords();
+        this.dynamoTableName = dynamoDbProperties.tableName();
         this.dynamoClient = dynamoClient;
-        this.fakeApiService = fakeApiService;
+        this.timeSeriesApiClient = timeSeriesApiClient;
         this.metricBuilderService = metricBuilderService;
     }
 
     /**
-     * Produces a response containing metrics for a particular stock symbol and date range
+     * Produces a response containing metrics for a particular stock symbol
      * 
      * @param symbol the symbol of the stock to provide analysis on
-     * @param startDate the date to provide results from
-     * @param endDate the date to provide results to
-     * @return a list of metrics 
-     * @throws IllegalArgumentException if there is invalid input
-     * @throws StockAnalysisException if an error occurs while processing
+     * @param fullOutputSize if true return a full output size, else compact
+     * @return a list of metrics in a json format
+     * @throws InternalServerErrorException if an error occurs while processing
      */
-    public String produceAnalysis(String symbol, 
-                                  String startDate, 
-                                  String endDate,
-                                  boolean fullOutputSize) throws IllegalArgumentException, StockAnalysisException {
+    public String produceAnalysis(String symbol, boolean fullOutputSize) throws InternalServerErrorException {        
         final int numRecordsToReturn = fullOutputSize ? maxDaysToAnalyse : defaultDaysToAnalyse;
-        final DateRange analysisDateRange = DateUtils.verifyDateRange(DateUtils.convertToDate(startDate), 
-                                                                      DateUtils.convertToDate(endDate),
-                                                                      DateUtils.getPastDate(numRecordsToReturn), 
-                                                                      DateUtils.getPastDate(1));
-        
+       
         List<DailyStockMetrics> stockAnalysis = new ArrayList<>();
         try {
-            // Disregard analysis dates when retrieving dynamo records
-            List<DailyStockMetrics> dynamoResponse = findDynamoRecordsBetween(
-                DateUtils.getPastDate(numRecordsToReturn).toString(), 
-                DateUtils.getPastDate(1).toString(),
+            List<DailyStockMetrics> dynamoRecords = findLastNDynamoRecords(
                 symbol,
                 numRecordsToReturn,
                 DailyStockMetrics.class);
 
-            LocalDate lastUpdateDate = dynamoResponse.isEmpty() 
-                ? null
-                : dynamoResponse.getLast().getDate();
-
-            if (lastUpdateDate == null || lastUpdateDate.isBefore(DateUtils.getPastDate(1))) {
+            // If no record of stock in dynamo or records need updating
+            if (dynamoRecords.isEmpty() || dynamoRecords.getLast().getDate().isBefore(LocalDate.now().minusDays(1))) {
                 LOGGER.info(String.format("Dynamo records incomplete for stock %s, updating...", symbol));
 
-                // Set last update to maximum records if none present in dynamo
-                lastUpdateDate = lastUpdateDate == null 
-                    ? DateUtils.getPastDate(maxDaysToAnalyse)
-                    : lastUpdateDate;
-                int numRecordsToAdd = DateUtils.calculateNumDaysBetweenDates(lastUpdateDate, DateUtils.getPastDate(1)) + 1;
-
-                List<DailyStockRecord> stockRecords = fetchAndConvertStockRecords(symbol, numRecordsToAdd);
+                List<DailyStockRecord> stockRecords = fetchAndConvertStockRecords(symbol);
                 List<DailyStockMetrics> stockMetrics = calculateAndUploadStockMetrics(stockRecords);
 
                 stockAnalysis.addAll(stockMetrics);
 
             } else {
-                stockAnalysis = dynamoResponse;
+                stockAnalysis = dynamoRecords;
             }
 
-            return filterAndSerializeMetrics(stockAnalysis, analysisDateRange.getStartDate(), analysisDateRange.getEndDate(), numRecordsToReturn);
+            return filterAndSerializeMetrics(stockAnalysis, numRecordsToReturn);
 
-        } catch (DynamoClientException | FakeApiException | ParserException | MetricBuilderException | SerializerException exception) {
-            throw new StockAnalysisException(
-                String.format("Exception when producing %s analysis over the period %s - %s!", 
-                    symbol, analysisDateRange.getStartDate(), analysisDateRange.getEndDate()), 
+        } catch (DynamoClientException | TimeSeriesApiException | ParserException | MetricBuilderException | SerializerException exception) {
+            throw new InternalServerErrorException(
+                String.format("Exception when producing %s analysis!", symbol), 
+                HttpStatus.INTERNAL_SERVER_ERROR,
                 exception);
-        }
+        } 
     }
 
-    private <T> List<T> findDynamoRecordsBetween(String sortKeyStart, 
-                                                 String sortKeyEnd, 
-                                                 String partitionKey, 
-                                                 int maxRecords,
-                                                 Class<T> recordType) throws DynamoClientException {
+    private <T> List<T> findLastNDynamoRecords(String partitionKey, 
+                                               int maxRecords,
+                                               Class<T> recordType) throws DynamoClientException {
         try {
             return dynamoClient.query(
-                DYNAMO_TABLE_NAME, 
-                QueryConditional
-                    .sortBetween(
-                        Key.builder().partitionValue(partitionKey).sortValue(sortKeyStart).build(), 
-                        Key.builder().partitionValue(partitionKey).sortValue(sortKeyEnd).build()
-                    ),
+                dynamoTableName, 
+                QueryConditional.keyEqualTo(Key.builder().partitionValue(partitionKey).build()),
                 maxRecords,
                 recordType);
         } catch (DynamoClientException exception) {
-            LOGGER.error(String.format("Exception when finding dynamo records between (%s) - (%s)", sortKeyStart, sortKeyEnd));
+            LOGGER.error(String.format("Exception when finding the last %d dynamo records for key %s", maxRecords, partitionKey));
             throw exception;
         }
     }
 
-    private List<DailyStockRecord> fetchAndConvertStockRecords(String symbol, 
-                                                               int numDaysToFetch) throws ParserException {
+    private List<DailyStockRecord> fetchAndConvertStockRecords(String symbol) throws TimeSeriesApiException, ClientErrorException, ParserException {
         try {
-            return StockRecordsParser.parse(fakeApiService.getStockData(symbol, numDaysToFetch));
+            return StockRecordsParser.parse(timeSeriesApiClient.getDailyTimeSeries(symbol));
+        } catch (TimeSeriesApiException exception) {
+            LOGGER.error(String.format("Exception when retrieving data from API for stock (%s)", symbol));
+
+            // Client specific errors should be seperated from the internal exceptions
+            switch (exception.getStatusCode()) {
+                case 401:
+                case 404:
+                case 429:
+                    throw new ClientErrorException(exception.getMessage(), HttpStatus.valueOf(exception.getStatusCode()), exception);
+                default:
+                    throw exception;
+            }
+            
         } catch (ParserException exception) {
             LOGGER.error(String.format("Exception when parsing API response for stock (%s)", symbol));
             throw exception;
@@ -159,7 +147,7 @@ public class StockAnalysisService {
         for (DailyStockRecord record: recordsToAnalyse) {
             try {
                 metricsToUpload.add(metricBuilderService.caclculateMetrics(record.getDate(), recordsToAnalyse));
-                dynamoClient.putItem(DYNAMO_TABLE_NAME, metricsToUpload.getLast(), DailyStockMetrics.class);
+                dynamoClient.putItem(dynamoTableName, metricsToUpload.getLast(), DailyStockMetrics.class);
             } catch (MetricBuilderException exception) {
                 LOGGER.error(String.format("Exception when generating metric record for stock on date (%s)", record.getDate()));
                 throw exception;
@@ -171,14 +159,9 @@ public class StockAnalysisService {
         return metricsToUpload;
     }
 
-    private String filterAndSerializeMetrics(List<DailyStockMetrics> metrics, 
-                                             LocalDate metricStartDate, 
-                                             LocalDate metricEndDate,
-                                             int numRecordsToReturn) throws SerializerException {
+    private String filterAndSerializeMetrics(List<DailyStockMetrics> metrics, int numRecordsToReturn) throws SerializerException {
         // More recent metrics at start of list
-        List<DailyStockMetrics> metricsToFormat = metrics.stream()
-            .filter(r -> !r.getDate().isBefore(metricStartDate) && !r.getDate().isAfter(metricEndDate))
-            .sorted(Comparator.comparing(DailyStockMetrics::getDate).reversed())
+        List<DailyStockMetrics> metricsToFormat = metrics.reversed().stream()
             .limit(numRecordsToReturn)
             .toList();
 

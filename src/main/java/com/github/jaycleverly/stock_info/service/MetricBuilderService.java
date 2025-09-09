@@ -93,7 +93,7 @@ public class MetricBuilderService {
             }
             double mean = returns.stream().mapToDouble(d -> d).average().orElse(0);
             double variance = returns.stream().mapToDouble(r -> Math.pow(r - mean, 2)).sum() / returns.size();
-            return Math.sqrt(variance);
+            return Math.sqrt(variance) * 100;
         }
         return null;
     }
@@ -103,7 +103,7 @@ public class MetricBuilderService {
 
         if (index > momentumPeriod - 1) {
             double historicalClose = records.get(index - momentumPeriod).getClose();
-            return (recordToAnalyse.getClose() - historicalClose) / historicalClose;
+            return ((recordToAnalyse.getClose() - historicalClose) / historicalClose) * 100;
         }
         return null;
     }

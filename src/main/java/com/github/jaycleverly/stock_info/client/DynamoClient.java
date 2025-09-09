@@ -8,7 +8,6 @@ import com.github.jaycleverly.stock_info.exception.DynamoClientException;
 
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
-import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
@@ -44,25 +43,6 @@ public class DynamoClient {
         } catch (Exception e) {
             throw new DynamoClientException(
                 String.format("Exception when putting an item into table (%s)", tableName), e);
-        }
-    }
-
-    /**
-     * Gets an item from a table by key (partition + sort)
-     *
-     * @param tableName the name of the table to look in
-     * @param key the partition + sort key pairings to search with
-     * @param type the type of object getting from the table
-     * @return the found item
-     */
-    public <T> T getItem(String tableName, Key key, Class<T> type) {
-        try {
-            DynamoDbTable<T> table = client.table(tableName, TableSchema.fromBean(type));
-            return table.getItem(key);
-
-        } catch (Exception e) {
-            throw new DynamoClientException(
-                String.format("Exception when getting an item from table (%s)", tableName), e);
         }
     }
 

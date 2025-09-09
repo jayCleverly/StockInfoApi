@@ -7,5 +7,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "aws.dynamodb")
 public record DynamoDbProperties(
         String region,
-        Optional<String> endpoint
+        Optional<String> endpoint,
+        String tableName
 ) {}

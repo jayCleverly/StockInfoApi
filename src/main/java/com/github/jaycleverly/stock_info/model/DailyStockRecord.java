@@ -9,25 +9,19 @@ public class DailyStockRecord {
     private final double high;
     private final double low;
     private final double close;
-    private final double adjustedClose;
-    private final long volume;
 
     public DailyStockRecord(String symbol, 
                             LocalDate date, 
                             double open, 
                             double high, 
                             double low, 
-                            double close, 
-                            double adjustedClose, 
-                            long volume) {
+                            double close) {
         this.symbol = symbol;
         this.date = date;
         this.open = open;
         this.high = high;
         this.low = low;
         this.close = close;
-        this.adjustedClose = adjustedClose;
-        this.volume = volume;
     }
 
     public String getSymbol() {
@@ -52,13 +46,5 @@ public class DailyStockRecord {
 
     public double getClose() { 
         return close; 
-    }
-
-    public double getAdjustedClose() { 
-        return adjustedClose; 
-    }
-
-    public long getVolume() { 
-        return volume; 
     }
 }

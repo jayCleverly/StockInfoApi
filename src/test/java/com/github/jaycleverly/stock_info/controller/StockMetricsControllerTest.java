@@ -5,10 +5,11 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
 
-import com.github.jaycleverly.stock_info.exception.StockAnalysisException;
 import com.github.jaycleverly.stock_info.service.StockAnalysisService;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -27,7 +28,7 @@ public class StockMetricsControllerTest {
 
     @Test
     void shouldReturn2xxStatusCode() throws Exception {
-        when(stockAnalysisMock.produceAnalysis(MOCK_INPUT_SYMBOL, null, null, false))
+        when(stockAnalysisMock.produceAnalysis(MOCK_INPUT_SYMBOL, false))
             .thenReturn(MOCK_JSON_RESPONSE);
 
         mockMvc.perform(get("/stocks/" + MOCK_INPUT_SYMBOL))
@@ -35,19 +36,18 @@ public class StockMetricsControllerTest {
     }
 
     @Test
-    void shouldReturn400StatusCode() throws Exception {
-        when(stockAnalysisMock.produceAnalysis(MOCK_INPUT_SYMBOL, "INVALID_DATE", null, false))
-            .thenThrow(new IllegalArgumentException());
+    void shouldReturn4xxStatusCode() throws Exception {
+        when(stockAnalysisMock.produceAnalysis(MOCK_INPUT_SYMBOL, false))
+            .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND));
         
-        mockMvc.perform(get("/stocks/" + MOCK_INPUT_SYMBOL)
-            .param("analysisStartDate", "INVALID_DATE"))
-            .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/stocks/" + MOCK_INPUT_SYMBOL))
+            .andExpect(status().isNotFound());
     }
 
     @Test
-    void shouldReturn500StatusCode() throws Exception {
-        when(stockAnalysisMock.produceAnalysis(MOCK_INPUT_SYMBOL, null, null, false))
-            .thenThrow(new StockAnalysisException(null, null));
+    void shouldReturn5xxStatusCode() throws Exception {
+        when(stockAnalysisMock.produceAnalysis(MOCK_INPUT_SYMBOL, false))
+            .thenThrow(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR));
         
         mockMvc.perform(get("/stocks/" + MOCK_INPUT_SYMBOL))
             .andExpect(status().isInternalServerError());

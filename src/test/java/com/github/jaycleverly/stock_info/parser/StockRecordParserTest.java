@@ -44,8 +44,6 @@ public class StockRecordParserTest {
         assertEquals(105.0, mockRecord.getHigh());
         assertEquals(99.8, mockRecord.getLow());
         assertEquals(102.3, mockRecord.getClose());
-        assertEquals(102.3, mockRecord.getAdjustedClose());
-        assertEquals(1_500_000L, mockRecord.getVolume());
     }
 
     @Test
