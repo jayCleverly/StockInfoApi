@@ -21,7 +21,7 @@ public class StockMetricsSerializer {
      * 
      * @param metrics the metrics to serialize
      * @return a JSON string
-     * @throws MetricFormatterException if the metrics cannot be written as JSON
+     * @throws SerializerException if the metrics cannot be written as JSON
      */
     public static String serialize(List<DailyStockMetrics> metrics) throws SerializerException {
         ObjectNode root = FACTORY.objectNode();

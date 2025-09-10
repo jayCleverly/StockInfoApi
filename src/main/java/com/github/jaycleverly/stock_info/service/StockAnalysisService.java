@@ -46,8 +46,9 @@ public class StockAnalysisService {
      * Creates a new service that can provide an analysis response on a stock
      * 
      * @param limitsProperties the properties set for the application
+     * @param dynamoDbProperties the properties set for dynamodb
      * @param dynamoClient the client to handle dynamo db interactions
-     * @param fakeApiService the service to handle fake data generation
+     * @param timeSeriesApiClient the client to handle external stock api interactions
      * @param metricBuilderService the service to create metrics from stock records
      */
     public StockAnalysisService(AppLimitsProperties limitsProperties,

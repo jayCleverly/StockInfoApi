@@ -11,15 +11,12 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import com.github.jaycleverly.stock_info.config.properties.AppCalculationsProperties;
 import com.github.jaycleverly.stock_info.exception.MetricBuilderException;
 import com.github.jaycleverly.stock_info.model.DailyStockMetrics;
 import com.github.jaycleverly.stock_info.model.DailyStockRecord;
 
 public class MetricBuilderServiceTest {
     private static List<DailyStockRecord> mockStockHistory = new ArrayList<>();
-
-    private final AppCalculationsProperties calculationsProperties = new AppCalculationsProperties(30, 7, 14);
 
     @BeforeAll
     static void setUp() {
@@ -33,7 +30,7 @@ public class MetricBuilderServiceTest {
     @Test
     void shouldReturnCorrectMetrics() {
         LocalDate dateToTest = LocalDate.of(2025, 2, 19);
-        MetricBuilderService metricBuilderService = new MetricBuilderService(calculationsProperties);
+        MetricBuilderService metricBuilderService = new MetricBuilderService();
         DailyStockMetrics analysis = metricBuilderService.caclculateMetrics(dateToTest, mockStockHistory);
 
         assertEquals(149, analysis.getClose());
@@ -46,7 +43,7 @@ public class MetricBuilderServiceTest {
     @Test
     void shouldReturnNullsForUnsuitableRecords() {
         LocalDate dateToTest = LocalDate.of(2025, 1, 1);
-        MetricBuilderService metricBuilderService = new MetricBuilderService(calculationsProperties);
+        MetricBuilderService metricBuilderService = new MetricBuilderService();
         DailyStockMetrics analysis = metricBuilderService.caclculateMetrics(dateToTest, mockStockHistory);
 
         assertEquals(100, analysis.getClose());
@@ -59,7 +56,7 @@ public class MetricBuilderServiceTest {
     @Test
     void shouldThrowErrorForInvalidDate() {
         LocalDate dateToTest = LocalDate.of(2025, 2, 20);
-        MetricBuilderService metricBuilderService = new MetricBuilderService(calculationsProperties);
+        MetricBuilderService metricBuilderService = new MetricBuilderService();
 
         MetricBuilderException exception = assertThrows(MetricBuilderException.class, () -> metricBuilderService.caclculateMetrics(dateToTest, mockStockHistory));
         assertTrue(exception.getMessage().equals("Exception when building metrics for stock!"));

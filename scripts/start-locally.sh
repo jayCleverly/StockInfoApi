@@ -10,7 +10,7 @@ docker compose -p stock-api up --force-recreate --build -d
 docker image prune -f
 
 echo "Sleeping to allow time for container startup..."
-sleep 2
+sleep 3
 
 echo "Adding table to local docker instance..."
 AWS_ACCESS_KEY_ID=dummyId AWS_SECRET_ACCESS_KEY=dummySecret \

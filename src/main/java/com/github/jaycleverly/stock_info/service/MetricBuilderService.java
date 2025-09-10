@@ -6,7 +6,6 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.github.jaycleverly.stock_info.config.properties.AppCalculationsProperties;
 import com.github.jaycleverly.stock_info.exception.MetricBuilderException;
 import com.github.jaycleverly.stock_info.model.DailyStockMetrics;
 import com.github.jaycleverly.stock_info.model.DailyStockRecord;
@@ -16,20 +15,14 @@ import com.github.jaycleverly.stock_info.model.DailyStockRecord;
  */
 @Service
 public class MetricBuilderService {
-    private final int movingAveragePeriod;
-    private final int volatilityPeriod;
-    private final int momentumPeriod;
+    private final int movingAveragePeriod = 30;
+    private final int volatilityPeriod = 7;
+    private final int momentumPeriod = 14;
 
     /**
      * Creates a new service that can build metric objects from stock records
-     * 
-     * @param calculationsProperties the properties set for the application
      */
-    public MetricBuilderService(AppCalculationsProperties calculationsProperties) {
-        this.movingAveragePeriod = calculationsProperties.movingAveragePeriod();
-        this.volatilityPeriod = calculationsProperties.volatilityPeriod();
-        this.momentumPeriod = calculationsProperties.momentumPeriod();
-    }   
+    public MetricBuilderService() {}   
     
     /**
      * Calculates metrics for a specific date in a stock's records

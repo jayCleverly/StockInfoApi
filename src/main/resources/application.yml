@@ -6,10 +6,6 @@ app:
   limits:
     compact-records: 25
     full-records: 100
-  calculations:
-    moving-average-period: 30
-    volatility-period: 7
-    momentum-period: 14
   external-api:
     url: https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=%s&apikey=%s
     token: # Token here

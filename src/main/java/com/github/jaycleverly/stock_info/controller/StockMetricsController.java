@@ -28,9 +28,8 @@ public class StockMetricsController {
      * Returns metrics for the supplied stock
      * 
      * @param symbol the stock to look at
-     * @param analysisStartDate the start date of the analysis
-     * @param analysisEndDate the end date of the analysis
-     * @return
+     * @param outputSize the output size of the response (compact / full)
+     * @return a json formatted response containing stock metrics
      */
     @GetMapping("stocks/{symbol}")
     public ResponseEntity<String> getStockMetrics(@PathVariable String symbol,
